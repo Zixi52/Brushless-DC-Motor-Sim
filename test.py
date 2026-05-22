@@ -23,13 +23,7 @@ def change_box_size(s):
 def change_cylinder_radius(r):
     cyl.radius = r.value
 
-def temporaryChange():
-    return
-
 slider(bind=change_box_size, min=0.5, max=3, value=1, text="Box Size \n")
-slider(bind=temporaryChange, min=0.5, max=5, value=1, text="µ_stator \n")
-slider(bind=temporaryChange, min=3, max=1000, value=1, text="battery Voltage \n")
-slider(bind=temporaryChange, min=3, max=1000, value=1, text="Rotor Mass \n")
 slider(bind=change_cylinder_radius, min=1, max=10, value=1, text="cylinder radius \n")
 
 # Keep the window alive in VS Code terminal
