@@ -1,4 +1,5 @@
 import vpython as py
+import os
 from vpython import *
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
 canva = canvas(width=600, height=600, background=color.white) 
@@ -84,5 +85,4 @@ torque_arrow = arrow(pos=vector(0,0,0), axis=vector(0, 0, 5),
 # Keep the window alive in VS Code terminal
 input("\nPress [ENTER] in the terminal to close the canvas...")
 
-
-
+os._exit(0);
