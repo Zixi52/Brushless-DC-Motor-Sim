@@ -17,7 +17,7 @@ motor_length = 5
 #========================STATOR=================================
 hollow_stator_circle= shapes.circle(radius= 3, np= 32, scale =2, angle1 = 0.0, angle2 = 3*pi/2) # fix with thickness
 linepath = [ vec(0,0,0), vec(0,0,motor_length) ]
-extrusion( shape=hollow_stator_circle, path=linepath )
+extrusion( shape=hollow_stator_circle, path=linepath,color=color.green )
 
 #Ethan's first python code 
 # Create XYZ axis 
