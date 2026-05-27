@@ -20,7 +20,7 @@ hollow_stator_circle= shapes.circle(radius= 3, np= 32, scale =2, angle1 = 0.0, a
 linepath = [ vec(0,0,0), vec(0,0,motor_length) ]
 extrusion( shape=hollow_stator_circle, path=linepath,color=color.green )
 
-# Create XYZ axis 
+# Create XYZ axis  #
 originAxes = [
     arrow(pos=vec(0, 0, 0), axis=vec(1, 0, 0), color=color.red,shaftwidth=.1,),
     arrow(pos=vec(0, 0, 0), axis=vec(1, 1, 0), color=color.green,shaftwidth=.1),
