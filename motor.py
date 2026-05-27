@@ -73,11 +73,14 @@ def showOrigin (evt):
 def resetTimer(evt):
     s=evt.key
     if(s == 'r'):
-        w_dots.data=[]
+        a_dots.data=[]
         t_dots.data=[]
         iCurves[0].data =[]
         iCurves[1].data =[]
         iCurves[2].data =[]
+        BEMFCurves[0].data =[]
+        BEMFCurves[1].data =[]
+        BEMFCurves[2].data =[]
         t =0
         rotateKW(-w)
         w=0
