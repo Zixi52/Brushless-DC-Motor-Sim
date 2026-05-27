@@ -1,6 +1,6 @@
 import vpython as py
 from vpython import *
-
+##Web VPython 3.2
 # -------------------------------GLOBAL CONSTANTS-------------------------------------
 pi_2_3=2*pi/3
 # -------------------------------GLOBAL VARIABLES-------------------------------------
@@ -10,9 +10,9 @@ originAxesLength = 3
 temp_v1 =-2
 batteryV =0
 
-s_length = 89
+s_length = 200
 
-dt=1/30
+dt=1/50
 dw= 1*2*pi
 w=0
 t=0
@@ -27,19 +27,6 @@ canva.userspin = True   # Disables right-click rotation
 canva.userpan = True    # Disables shift-click object sliding/panning
 canva.autoscale = True  # Prevents camera from jumping around
 print("hello world")
-def resetTimer(evt):
-    s=evt.key
-    if(s == 'r'):
-        w_dots.data=[]
-        t_dots.data=[]
-        iCurves[0].data =[]
-        iCurves[1].data =[]
-        iCurves[2].data =[]
-        t =0
-        rotateKW(-w)
-        w=0
-        
-canva.bind('keydown', resetTimer)
 #========================STATOR=================================
 stator_core_line = [ vec(0,0,(temp_v1)), vec(0,0, (temp_v1-motor_length)) ]
 hollow_stator_circle= shapes.circle(radius= stator_r, np= 40, angle1 = 0.0, angle2 = 4*pi/2, thickness =.1) 
@@ -82,8 +69,21 @@ def showOrigin (evt):
             originAxes[i].opacity=1.0
             originLabels[i].opacity=1.0
         clrbtn.text = 'axes on'
-##=============================ALL USER INPUT============================
+##=============================ALL USER INPUTS============================
+def resetTimer(evt):
+    s=evt.key
+    if(s == 'r'):
+        w_dots.data=[]
+        t_dots.data=[]
+        iCurves[0].data =[]
+        iCurves[1].data =[]
+        iCurves[2].data =[]
+        t =0
+        rotateKW(-w)
+        w=0
+canva.bind('keydown', resetTimer)
 canva.append_to_caption(' PRESS R TO RESTART AND BOOM  ') 
+
 clrbtn = button( bind=showOrigin, text='axes on')
 canva.append_to_caption('   ') 
 setDefaultView_b = button( bind=setDefaultView, text=' Reset View')
@@ -101,8 +101,20 @@ n_slider = slider(bind=changeCorePermeability, min=1, max=5000, step=1, value=2,
 
 def changeBatteryV(evt):
     batteryV = evt.value
-canva.append_to_caption('\n\n Battery Voltage (0-694V): ') 
+canva.append_to_caption('\n\n Battery Voltage (6V-694V): ') 
 V_slider = slider(bind=changeBatteryV, min=6, max=694, step=1, value=6, id='x', align = 'none', length=s_length)
+canva.append_to_caption('') 
+
+def changeMagnetStrength(evt):
+    magnetBField = evt.value
+canva.append_to_caption(' Magnet Strength (27G-9470G): ') 
+V_slider = slider(bind=changeMagnetStrength, min=27, max=9470, step=1, value=6, id='x', align = 'none', length=s_length)
+canva.append_to_caption('') 
+
+def changeMagnetMass(evt):
+    magnetMass = evt.value
+canva.append_to_caption('\n\n Magnet Mass (.1kg-1678kg): ') 
+V_slider = slider(bind=changeMagnetMass, min=.1, max=1678, step=.1, value=6, id='x', align = 'none', length=s_length)
 canva.append_to_caption('') 
 ##=========================================================
 #permanent magnet (rotating cylinder in the center)
@@ -130,29 +142,41 @@ torque_arrow = arrow(pos=vector(0,0,0), axis=vector(0, 0, 5),
 def rotateKW(w):
         mag.rotate(angle=w, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
 # # ================PLAYING IWTH GRPAHS======================
-canva.append_to_caption('   ') 
-g_w = graph(width=600, height=250, xtitle=("Time (seconds)"), ytitle=("W (rads/second)"), align='none', scroll =True, xmin =0, xmax = 5)
-w_dots=gdots(color=color.green, size= 1,graph=g_w)
+dotSize=2
+canva.append_to_caption(' \n') 
+g_t = graph(width=600, height=200, xtitle=("Angle (Radians)"), ytitle=("Torque (N*m)"), align='none', scroll =True, xmin =0, xmax = 2*pi)
+t_dots=gdots(color=color.green, size= dotSize,graph=g_t)
 
-canva.append_to_caption(' ') 
-g_t = graph(width=600, height=250, xtitle=("Time (seconds)"), ytitle=("Torque (N*m)"), align='none', scroll =True, xmin =0, xmax = 5)
-t_dots=gdots(color=color.green, size= 1,graph=g_t)
+canva.append_to_caption(' \n') 
+g_a = graph(width=600, height=200, xtitle=("Time (seconds)"), ytitle=("Acceleration (N*m)"), align='none', scroll =True, xmin =0, xmax =5)
+a_dots=gdots(color=color.green, size= dotSize,graph=g_a)
 
 canva.append_to_caption('  \n ') 
-g_i = graph(width=800, height=250, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='none',scroll =True, xmin =0, xmax = 5)
+g_bemf = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V))"), align='none',scroll =True, xmin =0, xmax = 5)
+BEMFCurves = [None, None, None]
+BEMFCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_bemf)
+BEMFCurves[1]  =gdots(color=color.magenta, size= dotSize,graph=g_bemf)
+BEMFCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_bemf)
+
+canva.append_to_caption('  \n ') 
+g_i = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='none',scroll =True, xmin =0, xmax = 5)
 iCurves = [None, None, None]
-iCurves[0]  =gdots(color=color.red, size= .5,graph=g_i)
-iCurves[1]  =gdots(color=color.magenta, size= .5,graph=g_i)
-iCurves[2]  =gdots(color=color.blue, size= .5,graph=g_i)
+iCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_i)
+iCurves[1]  =gdots(color=color.magenta, size= dotSize,graph=g_i)
+iCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_i)
+
 
 while(1):
     rate(1/dt)
     rotateKW(dw*dt)
-    w_dots.plot(t, w)
-    t_dots.plot(t, w % 3 +15)
+    t_dots.plot(w, w % (pi/3) +15)
+    a_dots.plot(w, w % (pi/3) +12)
     iCurves[0].plot(t, sin(w))
     iCurves[1].plot(t, sin(w+pi_2_3))
     iCurves[2].plot(t, sin(w-pi_2_3))
+    BEMFCurves[0].plot(t, sin(w))
+    BEMFCurves[1].plot(t, sin(w+pi_2_3))
+    BEMFCurves[2].plot(t, sin(w-pi_2_3))
     w=w+dw*dt
     t=t+dt
 
