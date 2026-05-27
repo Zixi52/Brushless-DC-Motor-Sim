@@ -111,12 +111,16 @@ torque_arrow = arrow(pos=vector(0,0,0), axis=vector(0, 0, 5),
 def rotateKW(w):
         mag.rotate(angle=w, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
 # # ================PLAYING IWTH GRPAHS======================
-canva.append_to_caption('   ') 
-g_w = graph(width=350, height=250, xtitle=("Time"), ytitle=("W (rads/second)"), align='none')
+canva.append_to_caption('\n   ') 
+g_w = graph(width=350, height=300, xtitle=("Time (seconds)"), ytitle=("W (rads/second)"), align='none')
 w_dots=gdots(color=color.green, size= 1,graph=g_w)
 
+canva.append_to_caption(' ') 
+g_t = graph(width=500, height=300, xtitle=("Time (seconds)"), ytitle=("Torque (N*m)"), align='none')
+t_dots=gdots(color=color.green, size= 1,graph=g_t)
+
 canva.append_to_caption('  \n ') 
-g_i = graph(width=600, height=250, xtitle=("Time"), ytitle=("Current (A)"), align='none')
+g_i = graph(width=800, height=250, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='none')
 iCurves = [None, None, None]
 iCurves[0]  =gdots(color=color.red, size= .5,graph=g_i)
 iCurves[1]  =gdots(color=color.magenta, size= .5,graph=g_i)
@@ -132,6 +136,7 @@ while(t<10):
     rate(1/dt)
     rotateKW(dw*dt)
     w_dots.plot(t, w)
+    t_dots.plot(t, w % 3 +15)
     iCurves[0].plot(t, sin(w))
     iCurves[1].plot(t, sin(w+pi_2_3))
     iCurves[2].plot(t, sin(w-pi_2_3))
