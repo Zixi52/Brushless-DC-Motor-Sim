@@ -83,7 +83,7 @@ def showOrigin (evt):
             originLabels[i].opacity=1.0
         clrbtn.text = 'axes on'
 ##=============================ALL USER INPUT============================
-canva.append_to_caption('   ') 
+canva.append_to_caption(' PRESS R TO RESTART AND BOOM  ') 
 clrbtn = button( bind=showOrigin, text='axes on')
 canva.append_to_caption('   ') 
 setDefaultView_b = button( bind=setDefaultView, text=' Reset View')
@@ -131,15 +131,15 @@ def rotateKW(w):
         mag.rotate(angle=w, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
 # # ================PLAYING IWTH GRPAHS======================
 canva.append_to_caption('   ') 
-g_w = graph(width=600, height=250, xtitle=("Time (seconds)"), ytitle=("W (rads/second)"), align='none')
+g_w = graph(width=600, height=250, xtitle=("Time (seconds)"), ytitle=("W (rads/second)"), align='none', scroll =True, xmin =0, xmax = 5)
 w_dots=gdots(color=color.green, size= 1,graph=g_w)
 
 canva.append_to_caption(' ') 
-g_t = graph(width=600, height=250, xtitle=("Time (seconds)"), ytitle=("Torque (N*m)"), align='none')
+g_t = graph(width=600, height=250, xtitle=("Time (seconds)"), ytitle=("Torque (N*m)"), align='none', scroll =True, xmin =0, xmax = 5)
 t_dots=gdots(color=color.green, size= 1,graph=g_t)
 
 canva.append_to_caption('  \n ') 
-g_i = graph(width=800, height=250, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='none')
+g_i = graph(width=800, height=250, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='none',scroll =True, xmin =0, xmax = 5)
 iCurves = [None, None, None]
 iCurves[0]  =gdots(color=color.red, size= .5,graph=g_i)
 iCurves[1]  =gdots(color=color.magenta, size= .5,graph=g_i)
