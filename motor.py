@@ -1,17 +1,6 @@
 import vpython as py
 from vpython import *
 
-# ------------------------------------------------CAMERA SETTINGS------------------------------------------------
-canva = canvas(width=600, height=600, background=color.white, fov = 0.01) 
-def setDefaultView(evt):
-    canva.forward = vector(0, 0, -1)
-    canva.center = vector(0, 0, 1)
-# light = local_light(pos=vec(0, 0, 10), color=color.white)
-canva.userzoom = True   # Disables scroll wheel zoom
-canva.userspin = True   # Disables right-click rotation
-canva.userpan = True    # Disables shift-click object sliding/panning
-canva.autoscale = True  # Prevents camera from jumping around
-print("hello world")
 # -------------------------------GLOBAL CONSTANTS-------------------------------------
 pi_2_3=2*pi/3
 # -------------------------------GLOBAL VARIABLES-------------------------------------
@@ -19,10 +8,26 @@ stator_r =4
 motor_length = 10
 originAxesLength = 3
 temp_v1 =-2
+batteryV =0
+
+s_length = 89
+# ------------------------------------------------CAMERA SETTINGS------------------------------------------------
+canva = canvas(width=600, height=600, background=color.white, fov = 0.01, resizable=False, align = 'right') 
+def setDefaultView(evt):
+    canva.forward = vector(0, 0, -1)
+    canva.center = vector(0, 0, 1)
+light = local_light(pos=vec(0, 0, -2*motor_length), color=color.white)
+canva.userzoom = False   # Disables scroll wheel zoom
+canva.userspin = True   # Disables right-click rotation
+canva.userpan = True    # Disables shift-click object sliding/panning
+canva.autoscale = True  # Prevents camera from jumping around
+print("hello world")
 #========================STATOR=================================
 stator_core_line = [ vec(0,0,(temp_v1)), vec(0,0, (temp_v1-motor_length)) ]
-hollow_stator_circle= shapes.circle(radius= stator_r, np= 20, angle1 = 0.0, angle2 = 4*pi/2, thickness =.1) 
+hollow_stator_circle= shapes.circle(radius= stator_r, np= 40, angle1 = 0.0, angle2 = 4*pi/2, thickness =.1) 
 stator_core =extrusion( color=color.gray(.7), shape=hollow_stator_circle, path=stator_core_line, opacity=1, twosided=True)
+hollow_motor_shell= shapes.circle(radius= stator_r*1.85, np= 40, angle1 = 0.0, angle2 = 4*pi/2, thickness =.1) 
+motor_shell =extrusion( color=color.gray(0), shape=hollow_motor_shell, path=stator_core_line, opacity=1)
 
 # Coil cores (arranged in a ring around the magnet) to show copper winding
 winding = [None,None,None]
@@ -61,50 +66,77 @@ def showOrigin (evt):
         clrbtn.text = 'axes on'
 ##=============================ALL USER INPUT============================
 canva.append_to_caption('   ') 
-setDefaultView_b = button( bind=setDefaultView, text=' Reset View')
-canva.append_to_caption('   ') 
 clrbtn = button( bind=showOrigin, text='axes on')
-canva.append_to_caption('\n\n  Number of Turns per Length (5-15 turns/m): \n') 
-n_slider = slider(bind=changeNumberCoils, max=15, min=5, step=1, value=5, id='x',align = 'left')
+canva.append_to_caption('   ') 
+setDefaultView_b = button( bind=setDefaultView, text=' Reset View')
+canva.append_to_caption('\n\n  Turns per Length (5-15 turns/m):') 
+n_slider = slider(bind=changeNumberCoils, max=15, min=5, step=1, value=5, id='x',align = 'none', length=s_length)
    
 def changeCorePermeability(evt):
     new_hue=1 -evt.value/n_slider.max
     for i in range(len(core)):
         core[i].color = color.gray(new_hue)
-     
-canva.append_to_caption('\n\n  Core Permeability/Permeability of Free Space (1-5000): \n') 
-n_slider = slider(bind=changeCorePermeability, min=1, max=5000, step=1, value=2, id='x', align = 'left')
+# canva.append_to_caption('Core Permeability/Permeability of Free Space (1-5000): \n') 
+canva.append_to_caption('Core Permeability/µ_0 (1-5000): ') 
+n_slider = slider(bind=changeCorePermeability, min=1, max=5000, step=1, value=2, id='x', align = 'none', length=s_length)
+
+def changeBatteryV(evt):
+    batteryV = evt.value
+canva.append_to_caption('\n\n Battery Voltage (0-694V): ') 
+V_slider = slider(bind=changeBatteryV, min=6, max=694, step=1, value=6, id='x', align = 'none', length=s_length)
+canva.append_to_caption('\n\n ') 
 ##=========================================================
 #permanent magnet (rotating cylinder in the center)
 # magnet = cylinder(pos=vector(0,0,0), axis=vector(0,0,1), radius=3, length=0.6,
 #                   color=color.red, texture=textures.metal)
-north_half= shapes.circle(radius= 3.5, np= 32, scale =1, angle1=0, angle2 = pi)
 magnetSweep = [ vec(0, 0, temp_v1), vec(0, 0,temp_v1-motor_length) ]
-extrusion( shape=north_half, path=magnetSweep, color= color.red, opacity=1, twosided=True)
+north_disk= shapes.circle(radius= 3.5, np= 22, scale =1, angle1=0, angle2 = pi)
+northPole = extrusion( shape=north_disk, path=magnetSweep, color= color.red, opacity=1, twosided=True)
 
-south_half= shapes.circle(radius= 3.5, np= 32, scale =1, angle1=pi, angle2 = 2*pi)
-extrusion( shape=south_half, path=magnetSweep,color= color.blue , twosided=True)
+south_disk= shapes.circle(radius= 3.5, np= 22, scale =1, angle1=pi, angle2 = 2*pi)
+southPole = extrusion( shape=south_disk, path=magnetSweep,color= color.blue , twosided=True)
+mag = compound([northPole, southPole], axis = vec(1,0,0))
 
+        
 # Magnetic field arrow through a coil
 B_arrow = arrow(pos=vector(3.5, 0, 0), axis=vector(0, 2, 0),
-                shaftwidth=0.1, color=color.cyan)
-
+                shaftwidth=0.2, color=color.cyan)
 # Electric field / current direction arrow
 E_arrow = arrow(pos=vector(0,0,0), axis=vector(-5, 0, 0),
                 shaftwidth=0.1, color=color.yellow)
-
 # Torque vector on the magnet
 torque_arrow = arrow(pos=vector(0,0,0), axis=vector(0, 0, 5),
                      shaftwidth=0.1, color=color.magenta)
 
+def rotateKW(w):
+        mag.rotate(angle=w, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
+# # ================PLAYING IWTH GRPAHS======================
+canva.append_to_caption('   ') 
+g_w = graph(width=350, height=250, xtitle=("Time"), ytitle=("W (rads/second)"), align='none')
+w_dots=gdots(color=color.green, size= 1,graph=g_w)
 
-# def change_cylinder_radius(r):
-#     cyl.radius = r.value
+canva.append_to_caption('  \n ') 
+g_i = graph(width=600, height=250, xtitle=("Time"), ytitle=("Current (A)"), align='none')
+iCurves = [None, None, None]
+iCurves[0]  =gdots(color=color.red, size= .5,graph=g_i)
+iCurves[1]  =gdots(color=color.magenta, size= .5,graph=g_i)
+iCurves[2]  =gdots(color=color.blue, size= .5,graph=g_i)
 
-# slider(bind=change_cylinder_radius, min=1, max=10, value=1, text="cylinder radius \n")
 
-# ball = sphere(color=color.cyan)
-
+a = gcurve()
+dt=1/30
+dw= 1*2*pi
+t=0;
+w=0;
+while(t<10):
+    rate(1/dt)
+    rotateKW(dw*dt)
+    w_dots.plot(t, w)
+    iCurves[0].plot(t, sin(w))
+    iCurves[1].plot(t, sin(w+pi_2_3))
+    iCurves[2].plot(t, sin(w-pi_2_3))
+    w=w+dw*dt
+    t=t+dt
 
 
 # Keep the window alive in VS Code terminal
