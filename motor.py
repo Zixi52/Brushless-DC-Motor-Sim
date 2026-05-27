@@ -1,16 +1,16 @@
 import vpython as py
 from vpython import *
+
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
-canva = canvas(width=600, height=600, background=color.white) 
+canva = canvas(width=600, height=600, background=color.white, fov = 0.01) 
 def setDefaultView(evt):
     canva.forward = vector(0, 0, -1)
     canva.center = vector(0, 0, 1)
-
-canva.userzoom = False   # Disables scroll wheel zoom
+# light = local_light(pos=vec(0, 0, 10), color=color.white)
+canva.userzoom = True   # Disables scroll wheel zoom
 canva.userspin = True   # Disables right-click rotation
 canva.userpan = True    # Disables shift-click object sliding/panning
 canva.autoscale = True  # Prevents camera from jumping around
-canva.fov = 0.0001    
 print("hello world")
 # -------------------------------GLOBAL CONSTANTS-------------------------------------
 pi_2_3=2*pi/3
@@ -20,22 +20,20 @@ motor_length = 10
 originAxesLength = 3
 temp_v1 =-2
 #========================STATOR=================================
-hollow_stator_circle= shapes.circle(radius= stator_r, np= 20, angle1 = 0.0, angle2 = 4*pi/2, thickness =.1) # fix with thickness
-stator_core_line = [ vec(0,0,temp_v1), vec(0,0,temp_v1-motor_length) ]
-stator_core =extrusion( color=color.gray(.7), shape=hollow_stator_circle, path=stator_core_line )
+stator_core_line = [ vec(0,0,(temp_v1)), vec(0,0, (temp_v1-motor_length)) ]
+hollow_stator_circle= shapes.circle(radius= stator_r, np= 20, angle1 = 0.0, angle2 = 4*pi/2, thickness =.1) 
+stator_core =extrusion( color=color.gray(.7), shape=hollow_stator_circle, path=stator_core_line, opacity=1, twosided=True)
 
-# Coil cores (arranged in a ring around the magnet) to show copper winding
 # Coil cores (arranged in a ring around the magnet) to show copper winding
 winding = [None,None,None]
 core = [None,None,None]
-for i in range(len(winding)):
-    winding[i]=helix(pos=vector(stator_r*cos(pi_2_3*i), stator_r*sin(pi_2_3*i), 
-                                  (stator_core_line[0].z+stator_core_line[1].z)/2),
-                       axis=vector(cos(pi_2_3*i), sin(pi_2_3*i), 0),
-                  radius=3, coils=8, thickness=0.2, color=color.green,
+for i in range(len(core)):
+    v = vector(stator_r*cos(pi_2_3*i), stator_r*sin(pi_2_3*i), (stator_core_line[0].z+stator_core_line[1].z)/2)
+    v2=vector(cos(pi_2_3*i), sin(pi_2_3*i), 0)
+    winding[i]=helix(pos=v,axis=v2,
+                  radius=3, coils=8, thickness=0.2, color=color.orange,
                   thicknesses=0.02, size =vec(2,4,motor_length)) #4 is the width of inductor
-    v = winding[i].pos
-    core[i] =box(pos= vec(v.x*1.3, v.y*1.3, v.z), length=3, height=2, width=motor_length*.5, color=stator_core.color, axis = winding[i].axis)
+    core[i] =box(pos= vec(v.x*1.3, v.y*1.3, v.z), length=3, height=2, width=motor_length*.5, color=color.gray(.7), axis = v2)
 def changeNumberCoils(evt):
     print(evt)
     for i in range(len(winding)):
@@ -61,7 +59,7 @@ def showOrigin (evt):
             originAxes[i].opacity=1.0
             originLabels[i].opacity=1.0
         clrbtn.text = 'axes on'
-#=============================ALL USER INPUT============================
+##=============================ALL USER INPUT============================
 canva.append_to_caption('   ') 
 setDefaultView_b = button( bind=setDefaultView, text=' Reset View')
 canva.append_to_caption('   ') 
@@ -76,31 +74,28 @@ def changeCorePermeability(evt):
      
 canva.append_to_caption('\n\n  Core Permeability/Permeability of Free Space (1-5000): \n') 
 n_slider = slider(bind=changeCorePermeability, min=1, max=5000, step=1, value=2, id='x', align = 'left')
-#=========================================================
-
-
-# permanent magnet (rotating cylinder in the center)
+##=========================================================
+#permanent magnet (rotating cylinder in the center)
 # magnet = cylinder(pos=vector(0,0,0), axis=vector(0,0,1), radius=3, length=0.6,
 #                   color=color.red, texture=textures.metal)
-# north_half= shapes.circle(radius= 2, np= 32, scale =2, angle1=0, angle2 = pi)
-# linepath = [ vec(0,0,0), vec(0,0,3) ]
-# extrusion( shape=north_half, path=linepath )
+north_half= shapes.circle(radius= 3.5, np= 32, scale =1, angle1=0, angle2 = pi)
+magnetSweep = [ vec(0, 0, temp_v1), vec(0, 0,temp_v1-motor_length) ]
+extrusion( shape=north_half, path=magnetSweep, color= color.red, opacity=1, twosided=True)
 
-# south_half= shapes.circle(radius= 2, np= 32, scale =2, angle1=pi, angle2 = 2*pi)
-# linepath = [ vec(0,0,0), vec(0,0,3) ]
-# extrusion( shape=south_half, path=linepath )
+south_half= shapes.circle(radius= 3.5, np= 32, scale =1, angle1=pi, angle2 = 2*pi)
+extrusion( shape=south_half, path=magnetSweep,color= color.blue , twosided=True)
 
-# # Magnetic field arrow through a coil
-# B_arrow = arrow(pos=vector(3.5, 0, 0), axis=vector(0, 2, 0),
-#                 shaftwidth=0.1, color=color.cyan)
+# Magnetic field arrow through a coil
+B_arrow = arrow(pos=vector(3.5, 0, 0), axis=vector(0, 2, 0),
+                shaftwidth=0.1, color=color.cyan)
 
-# # Electric field / current direction arrow
-# E_arrow = arrow(pos=vector(0,0,0), axis=vector(-5, 0, 0),
-#                 shaftwidth=0.1, color=color.yellow)
+# Electric field / current direction arrow
+E_arrow = arrow(pos=vector(0,0,0), axis=vector(-5, 0, 0),
+                shaftwidth=0.1, color=color.yellow)
 
-# # Torque vector on the magnet
-# torque_arrow = arrow(pos=vector(0,0,0), axis=vector(0, 0, 5),
-#                      shaftwidth=0.1, color=color.magenta)
+# Torque vector on the magnet
+torque_arrow = arrow(pos=vector(0,0,0), axis=vector(0, 0, 5),
+                     shaftwidth=0.1, color=color.magenta)
 
 
 # def change_cylinder_radius(r):
