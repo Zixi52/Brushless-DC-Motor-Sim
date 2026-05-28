@@ -3,6 +3,9 @@ from vpython import *
 ##Web VPython 3.2
 # -------------------------------GLOBAL CONSTANTS-------------------------------------
 pi_2_3=2*pi/3
+vector_thirds = [vec(cos(pi/3), sin(pi/3), 0), 
+                 vec(cos(pi),sin(pi), 0),
+                 vec(cos(-pi/3),sin(-pi/3), 0)]
 # -------------------------------GLOBAL VARIABLES-------------------------------------
 stator_r =4
 motor_length = 10
@@ -16,6 +19,8 @@ dt=1/50
 dw= 1*2*pi
 w=0
 t=0
+
+phases = [A, B, C] #phase A, B, C respectively
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
 canva = canvas(width=600, height=600, background=color.white, fov = 0.01, resizable=False, align = 'right') 
 def setDefaultView(evt):
@@ -42,7 +47,7 @@ for i in range(len(core)):
     v2=vector(cos(pi_2_3*i), sin(pi_2_3*i), 0)
     winding[i]=helix(pos=v,axis=v2,
                   radius=3, coils=8, thickness=0.2, color=color.orange,
-                  thicknesses=0.02, size =vec(2,4,motor_length)) #4 is the width of inductor
+                  thicknesses=0.01, size =vec(2,4,motor_length)) #4 is the width of inductor
     core[i] =box(pos= vec(v.x*1.3, v.y*1.3, v.z), length=3, height=2, width=motor_length*.5, color=color.gray(.7), axis = v2)
 def changeNumberCoils(evt):
     print(evt)
@@ -71,6 +76,7 @@ def showOrigin (evt):
         clrbtn.text = 'axes on'
 ##=============================ALL USER INPUTS============================
 def resetTimer(evt):
+    global w
     s=evt.key
     if(s == 'r'):
         a_dots.data=[]
@@ -121,8 +127,6 @@ V_slider = slider(bind=changeMagnetMass, min=.1, max=1678, step=.1, value=6, id=
 canva.append_to_caption('') 
 ##=========================================================
 #permanent magnet (rotating cylinder in the center)
-# magnet = cylinder(pos=vector(0,0,0), axis=vector(0,0,1), radius=3, length=0.6,
-#                   color=color.red, texture=textures.metal)
 magnetSweep = [ vec(0, 0, temp_v1), vec(0, 0,temp_v1-motor_length) ]
 north_disk= shapes.circle(radius= 3.5, np= 22, scale =1, angle1=0, angle2 = pi)
 northPole = extrusion( shape=north_disk, path=magnetSweep, color= color.red, opacity=1, twosided=True)
@@ -144,7 +148,7 @@ torque_arrow = arrow(pos=vector(0,0,0), axis=vector(0, 0, 5),
 
 def rotateKW(w):
         mag.rotate(angle=w, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
-# # ================PLAYING IWTH GRPAHS======================
+# # ================PLAYING IWTH GRAPHS======================
 dotSize=2
 canva.append_to_caption('\n ================================================================= \n Legnend : Phase A in RED, Phase B in blue, Phase C in cyan ') 
 g_t = graph(width=600, height=200, xtitle=("Angle (Radians)"), ytitle=("Torque (N*m)"), align='none', scroll =True, xmin =0, xmax = 2*pi)
@@ -168,6 +172,45 @@ iCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_i)
 iCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_i)
 iCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_i)
 
+# THE PHYSICS  AND LOGIC BEHIND THIS
+
+# pass in the phase to set to high and the phase to set to low
+def togglePhases(high, low):
+    high = True
+    low = False
+    return high, low
+
+# one represents north pole, including error margin to not glitch everything out
+def getHallSensors():
+    hallSensorValue = [None, None, None] #counterclockwise
+    global vector_thirds
+    for i in range(len(hallSensorValue)-1):
+        if (dot(vector_thirds[i], getMagnetBField()) > 0):
+           hallSensorValue[i] = 1  # the hall sensors sees a north pole 
+        else:
+            hallSensorValue[i] = 0    # the hall sensors sees a south pole 
+        return hallSensorValue
+
+def getMagnetBField():
+    global w
+    return vec(cos(w), sin(w), 0)
+
+# we'll use case work to determine the phases that are on or off
+def applyCommutationLogic():
+    array =getHallSensors()
+    if (array == [1,0,1]):
+        phase1, phase3 = togglePhases()
+    elif (array == [1,0,0]):
+        togglePhases()
+    elif (array == [1,1,0]):
+        togglePhases()
+    elif (array == [0,1,0]):
+        togglePhases()
+    elif (array == [0,1,1]):
+        togglePhases()
+    elif (array == [0,0,1])
+        togglePhases();
+        
 
 while(1):
     rate(1/dt)
@@ -182,8 +225,3 @@ while(1):
     BEMFCurves[2].plot(t, sin(w-pi_2_3))
     w=w+dw*dt
     t=t+dt
-
-
-
-# Keep the window alive in VS Code terminal
-input("\nPress [ENTER] in the terminal to close the canvas...")
