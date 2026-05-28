@@ -85,7 +85,7 @@ def resetTimer(evt):
         rotateKW(-w)
         w=0
 canva.bind('keydown', resetTimer)
-canva.append_to_caption(' PRESS R TO RESTART AND BOOM  ') 
+canva.append_to_caption(' PRESS R TO RESTART SIMULATION YAY  ') 
 
 clrbtn = button( bind=showOrigin, text='axes on')
 canva.append_to_caption('   ') 
@@ -146,26 +146,26 @@ def rotateKW(w):
         mag.rotate(angle=w, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
 # # ================PLAYING IWTH GRPAHS======================
 dotSize=2
-canva.append_to_caption(' \n') 
+canva.append_to_caption('\n ================================================================= \n Legnend : Phase A in RED, Phase B in blue, Phase C in cyan ') 
 g_t = graph(width=600, height=200, xtitle=("Angle (Radians)"), ytitle=("Torque (N*m)"), align='none', scroll =True, xmin =0, xmax = 2*pi)
 t_dots=gdots(color=color.green, size= dotSize,graph=g_t)
 
-canva.append_to_caption(' \n') 
+canva.append_to_caption(' ') 
 g_a = graph(width=600, height=200, xtitle=("Time (seconds)"), ytitle=("Acceleration (N*m)"), align='none', scroll =True, xmin =0, xmax =5)
 a_dots=gdots(color=color.green, size= dotSize,graph=g_a)
 
-canva.append_to_caption('  \n ') 
+canva.append_to_caption('  ') 
 g_bemf = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V))"), align='none',scroll =True, xmin =0, xmax = 5)
 BEMFCurves = [None, None, None]
 BEMFCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_bemf)
-BEMFCurves[1]  =gdots(color=color.magenta, size= dotSize,graph=g_bemf)
+BEMFCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_bemf)
 BEMFCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_bemf)
 
 canva.append_to_caption('  \n ') 
 g_i = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='none',scroll =True, xmin =0, xmax = 5)
 iCurves = [None, None, None]
 iCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_i)
-iCurves[1]  =gdots(color=color.magenta, size= dotSize,graph=g_i)
+iCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_i)
 iCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_i)
 
 
