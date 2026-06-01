@@ -16,15 +16,15 @@ batteryV =0
 s_length = 200
 
 dt=1/50
-dw= 1*2*pi
-w=0
+dtheta= 1*2*pi
+theta=0
 t=0
 
-A = 0
-B = 0
-C = 0
+phases = [0, 0, 0] # Current in each phase A, B, C respectively, if i != 0 its on
+phaseRs = [2, 2, 2] # Resistance in each phase A, B, C respectively
+phaseBfields = [] #will be in units of T
+backEMFS = [0, 0, 0] # Back EMFs induced in each phase
 
-phases = [A, B, C] #phase A, B, C respectively
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
 canva = canvas(width=600, height=600, background=color.white, fov = 0.01, resizable=False, align = 'right') 
 def setDefaultView(evt):
@@ -35,7 +35,6 @@ canva.userzoom = False   # Disables scroll wheel zoom
 canva.userspin = True   # Disables right-click rotation
 canva.userpan = True    # Disables shift-click object sliding/panning
 canva.autoscale = True  # Prevents camera from jumping around
-print("hello world")
 #========================STATOR=================================
 stator_core_line = [ vec(0,0,(temp_v1)), vec(0,0, (temp_v1-motor_length)) ]
 hollow_stator_circle= shapes.circle(radius= stator_r, np= 40, angle1 = 0.0, angle2 = 4*pi/2, thickness =.1) 
@@ -80,7 +79,7 @@ def showOrigin (evt):
         clrbtn.text = 'axes on'
 ##=============================ALL USER INPUTS============================
 def resetTimer(evt):
-    global w
+    global theta
     s=evt.key
     if(s == 'r'):
         a_dots.data=[]
@@ -92,8 +91,8 @@ def resetTimer(evt):
         BEMFCurves[1].data =[]
         BEMFCurves[2].data =[]
         t =0
-        rotateKW(-w)
-        w=0
+        rotatekTheta(-theta)
+        theta=0
 canva.bind('keydown', resetTimer)
 canva.append_to_caption(' PRESS R TO RESTART SIMULATION YAY  ') 
 
@@ -150,8 +149,8 @@ E_arrow = arrow(pos=vector(0,0,0), axis=vector(-5, 0, 0),
 torque_arrow = arrow(pos=vector(0,0,0), axis=vector(0, 0, 5),
                      shaftwidth=0.1, color=color.magenta)
 
-def rotateKW(w):
-        mag.rotate(angle=w, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
+def rotatekTheta(theta):
+        mag.rotate(angle=theta, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
 # # ================PLAYING IWTH GRAPHS======================
 dotSize=2
 canva.append_to_caption('\n ================================================================= \n Legnend : Phase A in RED, Phase B in blue, Phase C in cyan ') 
@@ -177,13 +176,6 @@ iCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_i)
 iCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_i)
 
 # THE PHYSICS  AND LOGIC BEHIND THIS
-
-# pass in the phase to set to high and the phase to set to low
-def togglePhases(high, low):
-    high = True
-    low = False
-    return high, low
-
 # one represents north pole, including error margin to not glitch everything out
 def getHallSensors():
     hallSensorValue = [None, None, None] #counterclockwise
@@ -196,36 +188,53 @@ def getHallSensors():
         return hallSensorValue
 
 def getMagnetBField():
-    global w
-    return vec(cos(w), sin(w), 0)
+    global theta # track the angle
+    return vec(cos(theta), sin(theta), 0)
 
 # we'll use case work to determine the phases that are on or off
-def applyCommutationLogic():
-    array =getHallSensors()
-    if (array == [1,0,1]):
-        phase1, phase3 = togglePhases()
-    elif (array == [1,0,0]):
-        togglePhases()
-    elif (array == [1,1,0]):
-        togglePhases()
-    elif (array == [0,1,0]):
-        togglePhases()
-    elif (array == [0,1,1]):
-        togglePhases()
-    elif (array == [0,0,1]):
-        togglePhases()
-        
+def applyPhaseCurrents(phase_arr): #where phase arr is binary on off
+    global phases # applies long term goals/currents
+    global phaseBfieldss # applies long term goals/currents
+    phases[0] = phase_arr[0] * batteryV/phaseRs[0]
+    phaseBfields[0] = phase_arr[0] * batteryV/phaseRs[0]
+    phases[1] = phase_arr[1] * batteryV/phaseRs[1]
+    phases[2] = phase_arr[2] * batteryV/phaseRs[2]
+
+def getNewStep():
+    hall_sensors = getHallSensors()
+    if (hall_sensors == [1,0,1]):
+        applyPhaseCurrents([None, 0, 1])
+        #CH BL
+    elif (hall_sensors == [1,0,0]):
+        applyPhaseCurrents([1, 0, None])
+        #AH BL
+    elif (hall_sensors == [1,1,0]):
+        applyPhaseCurrents([1, None, 0])
+        #AH CL
+    elif (hall_sensors == [0,1,0]):
+        applyPhaseCurrents([None, 1, 0])
+        #BH CL
+    elif (hall_sensors == [0,1,1]):
+        applyPhaseCurrents([0, 1, None])
+        #BH AL  
+    elif (hall_sensors == [0,0,1]):
+        applyPhaseCurrents([0, None, 1])
+        #CH AL
+ 
+def calculateBField():
+    global phaseBfields
+    
 
 while(1):
     rate(1/dt)
-    rotateKW(dw*dt)
-    t_dots.plot(w, w % (pi/3) +15)
-    a_dots.plot(w, w % (pi/3) +12)
-    iCurves[0].plot(t, sin(w))
-    iCurves[1].plot(t, sin(w+pi_2_3))
-    iCurves[2].plot(t, sin(w-pi_2_3))
-    BEMFCurves[0].plot(t, sin(w))
-    BEMFCurves[1].plot(t, sin(w+pi_2_3))
-    BEMFCurves[2].plot(t, sin(w-pi_2_3))
-    w=w+dw*dt
+    rotatekTheta(dtheta*dt)
+    t_dots.plot(theta, theta % (pi/3) +15)
+    a_dots.plot(theta, theta % (pi/3) +12)
+    iCurves[0].plot(t, sin(theta))
+    iCurves[1].plot(t, sin(theta+pi_2_3))
+    iCurves[2].plot(t, sin(theta-pi_2_3))
+    BEMFCurves[0].plot(t, sin(theta))
+    BEMFCurves[1].plot(t, sin(theta+pi_2_3))
+    BEMFCurves[2].plot(t, sin(theta-pi_2_3))
+    theta=theta+dtheta*dt
     t=t+dt
