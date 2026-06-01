@@ -1,6 +1,6 @@
 import vpython as py
 from vpython import *
-##Web VPython 3.2
+#Web VPython 3.2
 # -------------------------------GLOBAL CONSTANTS-------------------------------------
 pi_2_3=2*pi/3
 vector_thirds = [vec(cos(pi/3), sin(pi/3), 0), 
@@ -19,6 +19,10 @@ dt=1/50
 dw= 1*2*pi
 w=0
 t=0
+
+A = 0
+B = 0
+C = 0
 
 phases = [A, B, C] #phase A, B, C respectively
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
@@ -208,8 +212,8 @@ def applyCommutationLogic():
         togglePhases()
     elif (array == [0,1,1]):
         togglePhases()
-    elif (array == [0,0,1])
-        togglePhases();
+    elif (array == [0,0,1]):
+        togglePhases()
         
 
 while(1):
