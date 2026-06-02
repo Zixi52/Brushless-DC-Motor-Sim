@@ -1,6 +1,6 @@
 import vpython as py
 from vpython import *
-#Web VPython 3.2
+#Web VPython 3.2    
 # -------------------------------GLOBAL CONSTANTS-------------------------------------
 pi_2_3=2*pi/3
 vector_thirds = [vec(cos(0), sin(0), 0), 
@@ -22,12 +22,12 @@ t=0
 
 omega = 0 # angular vel
 inertia = 1  # moment of inertia
-damping = 1 # friction coefficient
+damping = 0.1 # friction coefficient
 
 phases = [0, 0, 0] # Current in each phase A, B, C respectively, if i != 0 its on
 phaseRs = [2, 2, 2] # Resistance in each phase A, B, C respectively
 phaseBfields = [0, 0, 0]  #will be in units of T
-backEMFS = [0, 0, 0] # Back EMFs induced in each phase
+phaseBEMF = [0, 0, 0] # Back EMFs induced in each phase
 
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
 canva = canvas(width=600, height=600, background=color.white, fov = 0.01, resizable=False, align = 'right') 
@@ -36,9 +36,9 @@ def setDefaultView(evt):
     canva.center = vector(0, 0, 1)
 light = local_light(pos=vec(0, 0, -2*motor_length), color=color.white)
 canva.userzoom = False   # Disables scroll wheel zoom
-canva.userspin = True   # Disables right-click rotation
-canva.userpan = True    # Disables shift-click object sliding/panning
-canva.autoscale = True  # Prevents camera from jumping around
+canva.userspin = False   # Disables right-click rotation
+canva.userpan = False    # Disables shift-click object sliding/panning
+canva.autoscale = False  # Prevents camera from jumping around
 #========================STATOR=================================
 stator_core_line = [ vec(0,0,(temp_v1)), vec(0,0, (temp_v1-motor_length)) ]
 hollow_stator_circle= shapes.circle(radius= stator_r, np= 40, angle1 = 0.0, angle2 = 4*pi/2, thickness =.1) 
@@ -91,9 +91,9 @@ def resetTimer(evt):
         iCurves[0].data =[]
         iCurves[1].data =[]
         iCurves[2].data =[]
-        BEMFCurves[0].data =[]
-        BEMFCurves[1].data =[]
-        BEMFCurves[2].data =[]
+        phaseBEMFCurves[0].data =[]
+        phaseBEMFCurves[1].data =[]
+        phaseBEMFCurves[2].data =[]
         t =0
         rotatekTheta(-theta)
         theta=0
@@ -159,7 +159,7 @@ torque_arrow = arrow(pos=vector(0,0,0), axis=vector(0, 0, 5),
 def rotatekTheta(theta):
         mag.rotate(angle=theta, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
 # # ================PLAYING IWTH GRAPHS======================
-dotSize=2
+dotSize=2   
 canva.append_to_caption('\n ================================================================= \n Legnend : Phase A in RED, Phase B in blue, Phase C in cyan ') 
 g_t = graph(width=600, height=200, xtitle=("Angle (Radians)"), ytitle=("Torque (N*m)"), align='none', scroll =True, xmin =0, xmax = 2*pi)
 t_dots=gdots(color=color.green, size= dotSize,graph=g_t)
@@ -170,10 +170,10 @@ a_dots=gdots(color=color.green, size= dotSize,graph=g_a)
 
 canva.append_to_caption('  ') 
 g_bemf = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V))"), align='none',scroll =True, xmin =0, xmax = 5)
-BEMFCurves = [None, None, None]
-BEMFCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_bemf)
-BEMFCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_bemf)
-BEMFCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_bemf)
+phaseBEMFCurves = [None, None, None]
+phaseBEMFCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_bemf)
+phaseBEMFCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_bemf)
+phaseBEMFCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_bemf)
 
 canva.append_to_caption('  \n ') 
 g_i = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='none',scroll =True, xmin =0, xmax = 5)
@@ -198,6 +198,12 @@ def getMagnetBField():
     global theta
     magnetStrength = 0.1
     return magnetStrength * vec(cos(theta), sin(theta), 0)
+
+def calculateBField():
+    global phaseBfields
+
+def calculateBackEMFS():
+    global phaseBEMF
 
 # we'll use case work to determine the phases that are on or off
 def applyPhaseCurrents(phase_arr):
@@ -232,9 +238,6 @@ def getNewStep():
         applyPhaseCurrents([0, None, 1])
         #CH AL
  
-def calculateBField():
-    global phaseBfields
-
 def calculateTorque():
     torque = 0
     for i in range(3):
@@ -244,8 +247,8 @@ def calculateTorque():
         # Effective B at this coil, is projection of rotating magnetic field onto coil
         B_eff = dot(getMagnetBField(), coil_axis)
         
-        # F = BIL
-        F = B_eff * phases[i] * motor_length
+        # F = ILB
+        F =  phases[i] * motor_length * B_eff
         
         # Torque = r x F
         torque += stator_r * F
@@ -267,8 +270,8 @@ while(1):
     iCurves[0].plot(t, sin(theta))
     iCurves[1].plot(t, sin(theta+pi_2_3))
     iCurves[2].plot(t, sin(theta-pi_2_3))
-    BEMFCurves[0].plot(t, sin(theta))
-    BEMFCurves[1].plot(t, sin(theta+pi_2_3))
-    BEMFCurves[2].plot(t, sin(theta-pi_2_3))
+    phaseBEMFCurves[0].plot(t, sin(theta))
+    phaseBEMFCurves[1].plot(t, sin(theta+pi_2_3))
+    phaseBEMFCurves[2].plot(t, sin(theta-pi_2_3))
     # theta=theta+dtheta*dt
     t=t+dt
