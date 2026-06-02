@@ -3,15 +3,15 @@ from vpython import *
 #Web VPython 3.2
 # -------------------------------GLOBAL CONSTANTS-------------------------------------
 pi_2_3=2*pi/3
-vector_thirds = [vec(cos(pi/3), sin(pi/3), 0), 
-                 vec(cos(pi),sin(pi), 0),
-                 vec(cos(-pi/3),sin(-pi/3), 0)]
+vector_thirds = [vec(cos(0), sin(0), 0), 
+                 vec(cos(pi_2_3), sin(pi_2_3), 0),
+                 vec(cos(2*pi_2_3), sin(2*pi_2_3), 0)]
 # -------------------------------GLOBAL VARIABLES-------------------------------------
 stator_r =4
 motor_length = 10
 originAxesLength = 3
 temp_v1 =-2
-batteryV =0
+batteryV =6
 
 s_length = 200
 
@@ -20,9 +20,13 @@ dtheta= 1*2*pi
 theta=0
 t=0
 
+omega = 0 # angular vel
+inertia = 1  # moment of inertia
+damping = 1 # friction coefficient
+
 phases = [0, 0, 0] # Current in each phase A, B, C respectively, if i != 0 its on
 phaseRs = [2, 2, 2] # Resistance in each phase A, B, C respectively
-phaseBfields = [] #will be in units of T
+phaseBfields = [0, 0, 0]  #will be in units of T
 backEMFS = [0, 0, 0] # Back EMFs induced in each phase
 
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
@@ -112,18 +116,21 @@ canva.append_to_caption('Core Permeability/µ_0 (1-5000): ')
 n_slider = slider(bind=changeCorePermeability, min=1, max=5000, step=1, value=2, id='x', align = 'none', length=s_length)
 
 def changeBatteryV(evt):
+    global batteryV
     batteryV = evt.value
 canva.append_to_caption('\n\n Battery Voltage (6V-694V): ') 
 V_slider = slider(bind=changeBatteryV, min=6, max=694, step=1, value=6, id='x', align = 'none', length=s_length)
 canva.append_to_caption('') 
 
 def changeMagnetStrength(evt):
+    global magnetBField
     magnetBField = evt.value
 canva.append_to_caption(' Magnet Strength (27G-9470G): ') 
 V_slider = slider(bind=changeMagnetStrength, min=27, max=9470, step=1, value=6, id='x', align = 'none', length=s_length)
 canva.append_to_caption('') 
 
 def changeMagnetMass(evt):
+    global magnetMass
     magnetMass = evt.value
 canva.append_to_caption('\n\n Magnet Mass (.1kg-1678kg): ') 
 V_slider = slider(bind=changeMagnetMass, min=.1, max=1678, step=.1, value=6, id='x', align = 'none', length=s_length)
@@ -180,28 +187,32 @@ iCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_i)
 def getHallSensors():
     hallSensorValue = [None, None, None] #counterclockwise
     global vector_thirds
-    for i in range(len(hallSensorValue)-1):
+    for i in range(len(hallSensorValue)):
         if (dot(vector_thirds[i], getMagnetBField()) > 0):
            hallSensorValue[i] = 1  # the hall sensors sees a north pole 
         else:
             hallSensorValue[i] = 0    # the hall sensors sees a south pole 
-        return hallSensorValue
+    return hallSensorValue
 
 def getMagnetBField():
-    global theta # track the angle
-    return vec(cos(theta), sin(theta), 0)
+    global theta
+    magnetStrength = 0.1
+    return magnetStrength * vec(cos(theta), sin(theta), 0)
 
 # we'll use case work to determine the phases that are on or off
-def applyPhaseCurrents(phase_arr): #where phase arr is binary on off
-    global phases # applies long term goals/currents
-    global phaseBfieldss # applies long term goals/currents
-    phases[0] = phase_arr[0] * batteryV/phaseRs[0]
-    phaseBfields[0] = phase_arr[0] * batteryV/phaseRs[0]
-    phases[1] = phase_arr[1] * batteryV/phaseRs[1]
-    phases[2] = phase_arr[2] * batteryV/phaseRs[2]
+def applyPhaseCurrents(phase_arr):
+    global phases, phaseBfields
+    for i in range(3):
+        if phase_arr[i] is None:
+            phases[i] = 0
+            # phaseBfields[i] = 0
+        else:
+            phases[i] = phase_arr[i] * batteryV / phaseRs[i]
+            # phaseBfields[i] = phase_arr[i] * batteryV / phaseRs[i]
 
 def getNewStep():
     hall_sensors = getHallSensors()
+    print("hall:", hall_sensors)
     if (hall_sensors == [1,0,1]):
         applyPhaseCurrents([None, 0, 1])
         #CH BL
@@ -223,11 +234,34 @@ def getNewStep():
  
 def calculateBField():
     global phaseBfields
+
+def calculateTorque():
+    torque = 0
+    for i in range(3):
+        coil_angle = pi_2_3 * i # angular position of coil i
+        coil_axis = vec(cos(coil_angle), sin(coil_angle), 0)
+
+        # Effective B at this coil, is projection of rotating magnetic field onto coil
+        B_eff = dot(getMagnetBField(), coil_axis)
+        
+        # F = BIL
+        F = B_eff * phases[i] * motor_length
+        
+        # Torque = r x F
+        torque += stator_r * F
+    return torque
     
 
 while(1):
     rate(1/dt)
-    rotatekTheta(dtheta*dt)
+    getNewStep()
+    torque = calculateTorque()
+    alpha = (torque - damping * omega) / inertia
+    omega += alpha * dt
+    theta += omega * dt
+    rotatekTheta(omega * dt)
+    # print(phases, batteryV, getMagnetBField())
+    # rotatekTheta(dtheta*dt)
     t_dots.plot(theta, theta % (pi/3) +15)
     a_dots.plot(theta, theta % (pi/3) +12)
     iCurves[0].plot(t, sin(theta))
@@ -236,5 +270,5 @@ while(1):
     BEMFCurves[0].plot(t, sin(theta))
     BEMFCurves[1].plot(t, sin(theta+pi_2_3))
     BEMFCurves[2].plot(t, sin(theta-pi_2_3))
-    theta=theta+dtheta*dt
+    # theta=theta+dtheta*dt
     t=t+dt
