@@ -11,23 +11,27 @@ stator_r =4
 motor_length = 10
 originAxesLength = 3
 temp_v1 =-2
-batteryV =6
+batteryV =6.94
 
 s_length = 200
 
-dt=1/50
-dtheta= 1*2*pi
-theta=0
 t=0
+dt=1/50
+theta=0
+dtheta= 1*2*pi
 
 omega = 0 # angular vel
 inertia = 1  # moment of inertia
-damping = 0.1 # friction coefficient
+damping = 1 # friction coefficient
 
 phases = [0, 0, 0] # Current in each phase A, B, C respectively, if i != 0 its on
 phaseRs = [2, 2, 2] # Resistance in each phase A, B, C respectively
 phaseBfields = [0, 0, 0]  #will be in units of T
 phaseBEMF = [0, 0, 0] # Back EMFs induced in each phase
+
+corePermeability = 0
+magnetBField = 0
+magnetMass = 0.1
 
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
 canva = canvas(width=600, height=600, background=color.white, fov = 0.01, resizable=False, align = 'right') 
@@ -86,8 +90,9 @@ def resetTimer(evt):
     global theta
     s=evt.key
     if(s == 'r'):
-        a_dots.data=[]
-        t_dots.data=[]
+        a_curve.data=[]
+        v_curve.data=[]
+        t_curve.data=[]
         iCurves[0].data =[]
         iCurves[1].data =[]
         iCurves[2].data =[]
@@ -108,32 +113,33 @@ canva.append_to_caption('\n\n  Turns per Length (5-15 turns/m):')
 n_slider = slider(bind=changeNumberCoils, max=15, min=5, step=1, value=5, id='x',align = 'none', length=s_length)
    
 def changeCorePermeability(evt):
-    new_hue=1 -evt.value/n_slider.max
+    global corePermeability
+    corePermeability=1 -evt.value/n_slider.max
     for i in range(len(core)):
-        core[i].color = color.gray(new_hue)
+        core[i].color = color.gray(corePermeability)
 # canva.append_to_caption('Core Permeability/Permeability of Free Space (1-5000): \n') 
-canva.append_to_caption('Core Permeability/µ_0 (1-5000): ') 
-n_slider = slider(bind=changeCorePermeability, min=1, max=5000, step=1, value=2, id='x', align = 'none', length=s_length)
+canva.append_to_caption('Core Permeability/µ_0 (1-5414 H/m): ') 
+n_slider = slider(bind=changeCorePermeability, min=1, max=5414, step=1, value=2, id='x', align = 'none', length=s_length)
 
 def changeBatteryV(evt):
     global batteryV
     batteryV = evt.value
-canva.append_to_caption('\n\n Battery Voltage (6V-694V): ') 
-V_slider = slider(bind=changeBatteryV, min=6, max=694, step=1, value=6, id='x', align = 'none', length=s_length)
+canva.append_to_caption('\n\n Battery Voltage (6.94V-51.6V): ') 
+V_slider = slider(bind=changeBatteryV, min=6.94, max=27, step=1, value=6.94, id='x', align = 'none', length=s_length)
 canva.append_to_caption('') 
 
 def changeMagnetStrength(evt):
     global magnetBField
     magnetBField = evt.value
-canva.append_to_caption(' Magnet Strength (27G-9470G): ') 
-V_slider = slider(bind=changeMagnetStrength, min=27, max=9470, step=1, value=6, id='x', align = 'none', length=s_length)
+canva.append_to_caption(' Magnet Strength (0G-1678G): ') 
+V_slider = slider(bind=changeMagnetStrength, min=0, max=1678, step=1, value=0, id='x', align = 'none', length=s_length)
 canva.append_to_caption('') 
 
 def changeMagnetMass(evt):
     global magnetMass
     magnetMass = evt.value
-canva.append_to_caption('\n\n Magnet Mass (.1kg-1678kg): ') 
-V_slider = slider(bind=changeMagnetMass, min=.1, max=1678, step=.1, value=6, id='x', align = 'none', length=s_length)
+canva.append_to_caption('\n\n Magnet Mass (.1796kg-1.18kg): ') 
+V_slider = slider(bind=changeMagnetMass, min=.1796, max=1.18, step=.1, value=0.1, id='x', align = 'none', length=s_length)
 canva.append_to_caption('') 
 ##=========================================================
 #permanent magnet (rotating cylinder in the center)
@@ -160,13 +166,17 @@ def rotatekTheta(theta):
         mag.rotate(angle=theta, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
 # # ================PLAYING IWTH GRAPHS======================
 dotSize=2   
-canva.append_to_caption('\n ================================================================= \n Legnend : Phase A in RED, Phase B in blue, Phase C in cyan ') 
-g_t = graph(width=600, height=200, xtitle=("Angle (Radians)"), ytitle=("Torque (N*m)"), align='none', scroll =True, xmin =0, xmax = 2*pi)
-t_dots=gdots(color=color.green, size= dotSize,graph=g_t)
+canva.append_to_caption('\n ================================================================= \n Legend : Phase A in RED, Phase B in blue, Phase C in cyan ') 
+g_t = graph(width=700, height=300, xtitle=("Angle (Radians)"), ytitle=("Torque (N*m)"), align='none', scroll =True, xmin =0, xmax = 2*pi)
+t_curve=gcurve(color=color.magenta, size= dotSize,graph=g_t)
 
 canva.append_to_caption(' ') 
-g_a = graph(width=600, height=200, xtitle=("Time (seconds)"), ytitle=("Acceleration (N*m)"), align='none', scroll =True, xmin =0, xmax =5)
-a_dots=gdots(color=color.green, size= dotSize,graph=g_a)
+g_v = graph(width=700, height=300, xtitle=("Time (seconds)"), ytitle=("Angular Vel. (Radians / s)"), align='none', scroll =True, xmin =0, xmax =5)
+v_curve=gcurve(color=color.cyan, size= dotSize,graph=g_v)
+
+canva.append_to_caption(' ') 
+g_a = graph(width=700, height=300, xtitle=("Time (seconds)"), ytitle=("Angular Accel. (Radians / s^2)"), align='none', scroll =True, xmin =0, xmax =5)
+a_curve=gcurve(color=color.green, size= dotSize,graph=g_a)
 
 canva.append_to_caption('  ') 
 g_bemf = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V))"), align='none',scroll =True, xmin =0, xmax = 5)
@@ -178,9 +188,9 @@ phaseBEMFCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_bemf)
 canva.append_to_caption('  \n ') 
 g_i = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='none',scroll =True, xmin =0, xmax = 5)
 iCurves = [None, None, None]
-iCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_i)
-iCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_i)
-iCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_i)
+iCurves[0]  =gcurve(color=color.red, size= dotSize,graph=g_i)
+iCurves[1]  =gcurve(color=color.cyan, size= dotSize,graph=g_i)
+iCurves[2]  =gcurve(color=color.blue, size= dotSize,graph=g_i)
 
 # THE PHYSICS  AND LOGIC BEHIND THIS
 # one represents north pole, including error margin to not glitch everything out
@@ -195,17 +205,21 @@ def getHallSensors():
     return hallSensorValue
 
 def getMagnetBField():
-    global theta
-    magnetStrength = 0.1
-    return magnetStrength * vec(cos(theta), sin(theta), 0)
+    global theta, magnetBField
+    return magnetBField / 10000 * vec(cos(theta), sin(theta), 0) #returns vector
 
-def calculateBField():
+def calculatePhaseBField():
     global phaseBfields
 
 def calculateBackEMFS():
-    global phaseBEMF
+    global phaseBEMF #in volts
+    #the componentof magnet's b field in each direction is 
+    getMagnetBField()
+    #b field of a,b,c: sonion(theta+pi), sonion(theta+pi/3), sonion(theta-pi/3)
+    #db/dt a,b,c: cos(theta+pi), cos(theta+pi/3), cos(theta-pi/3)
+    #NAw* B(cos(theta+phi))
+    phaseBEMF[0]= -winding[0].coils*2*pi*omega 
 
-# we'll use case work to determine the phases that are on or off
 def applyPhaseCurrents(phase_arr):
     global phases, phaseBfields
     for i in range(3):
@@ -248,7 +262,7 @@ def calculateTorque():
         B_eff = dot(getMagnetBField(), coil_axis)
         
         # F = ILB
-        F =  phases[i] * motor_length * B_eff
+        F =  phases[i] * motor_length * B_eff # need to fix
         
         # Torque = r x F
         torque += stator_r * F
@@ -265,11 +279,12 @@ while(1):
     rotatekTheta(omega * dt)
     # print(phases, batteryV, getMagnetBField())
     # rotatekTheta(dtheta*dt)
-    t_dots.plot(theta, theta % (pi/3) +15)
-    a_dots.plot(theta, theta % (pi/3) +12)
-    iCurves[0].plot(t, sin(theta))
-    iCurves[1].plot(t, sin(theta+pi_2_3))
-    iCurves[2].plot(t, sin(theta-pi_2_3))
+    t_curve.plot(theta, torque)
+    v_curve.plot(t, omega)
+    a_curve.plot(t, alpha)
+    iCurves[0].plot(t, phases[0])
+    iCurves[1].plot(t, phases[1])
+    iCurves[2].plot(t, phases[2])
     phaseBEMFCurves[0].plot(t, sin(theta))
     phaseBEMFCurves[1].plot(t, sin(theta+pi_2_3))
     phaseBEMFCurves[2].plot(t, sin(theta-pi_2_3))
