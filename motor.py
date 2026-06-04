@@ -8,6 +8,8 @@ vector_thirds = [vec(cos(0), sin(0), 0),
                  vec(cos(2*pi_2_3), sin(2*pi_2_3), 0)]
 # -------------------------------GLOBAL VARIABLES-------------------------------------
 stator_r =4
+
+# motor_length is also stator length rn
 motor_length = 10
 originAxesLength = 3
 temp_v1 =-2
@@ -32,6 +34,9 @@ phaseBEMF = [0, 0, 0] # Back EMFs induced in each phase
 corePermeability = 0
 magnetBField = 0
 magnetMass = 0.1
+
+wire_resistivity = 1.68e-8 # copper resistivity (ohm*m)
+wire_cross_section = 0.000001 # 1 mm^2
 
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
 canva = canvas(width=600, height=600, background=color.white, fov = 0.01, resizable=False, align = 'right') 
@@ -58,7 +63,7 @@ for i in range(len(core)):
     v2=vector(cos(pi_2_3*i), sin(pi_2_3*i), 0)
     winding[i]=helix(pos=v,axis=v2,
                   radius=3, coils=8, thickness=0.2, color=color.orange,
-                  thicknesses=0.01, size =vec(2,4,motor_length)) #4 is the width of inductor
+                  thicknesses=0.01, size =vec(2,4,motor_length)) # 4 is the width of inductor
     core[i] =box(pos= vec(v.x*1.3, v.y*1.3, v.z), length=3, height=2, width=motor_length*.5, color=color.gray(.7), axis = v2)
 def changeNumberCoils(evt):
     print(evt)
@@ -88,59 +93,84 @@ def showOrigin (evt):
 ##=============================ALL USER INPUTS============================
 def resetTimer(evt):
     global theta
-    s=evt.key
-    if(s == 'r'):
-        a_curve.data=[]
-        v_curve.data=[]
-        t_curve.data=[]
-        iCurves[0].data =[]
-        iCurves[1].data =[]
-        iCurves[2].data =[]
-        phaseBEMFCurves[0].data =[]
-        phaseBEMFCurves[1].data =[]
-        phaseBEMFCurves[2].data =[]
-        t =0
+    if evt.key == 'r':
+        a_curve.data = []
+        v_curve.data = []
+        t_curve.data = []
+        for curve in iCurves + phaseBEMFCurves:
+            curve.data = []
+        global t, theta, omega
+        t = 0
+        theta = 0
+        omega = 0
         rotatekTheta(-theta)
-        theta=0
+
 canva.bind('keydown', resetTimer)
 canva.append_to_caption(' PRESS R TO RESTART SIMULATION YAY  ') 
 
-clrbtn = button( bind=showOrigin, text='axes on')
+clrbtn = button(bind=showOrigin, text='axes on')
 canva.append_to_caption('   ') 
-setDefaultView_b = button( bind=setDefaultView, text=' Reset View')
+setDefaultView_b = button(bind=setDefaultView, text=' Reset View')
 
 canva.append_to_caption('\n\n  Turns per Length (5-15 turns/m):') 
-n_slider = slider(bind=changeNumberCoils, max=15, min=5, step=1, value=5, id='x',align = 'none', length=s_length)
-   
+turns_slider = slider(bind=changeNumberCoils, 
+                      max=15, min=5, step=1, value=8, 
+                      length=s_length)
+
+def changeNumberCoils(evt):
+    for i in range(len(winding)):
+        winding[i].coils = evt.value
+    updatePhaseResistance()
+
 def changeCorePermeability(evt):
     global corePermeability
-    corePermeability=1 -evt.value/n_slider.max
+    corePermeability = 1 - evt.value / core_slider.max
     for i in range(len(core)):
         core[i].color = color.gray(corePermeability)
-# canva.append_to_caption('Core Permeability/Permeability of Free Space (1-5000): \n') 
 canva.append_to_caption('Core Permeability/µ_0 (1-5414 H/m): ') 
-n_slider = slider(bind=changeCorePermeability, min=1, max=5414, step=1, value=2, id='x', align = 'none', length=s_length)
+core_slider = slider(bind=changeCorePermeability, min=1, max=5414, step=1, value=2, length=s_length)
 
 def changeBatteryV(evt):
     global batteryV
     batteryV = evt.value
 canva.append_to_caption('\n\n Battery Voltage (6.94V-51.6V): ') 
-V_slider = slider(bind=changeBatteryV, min=6.94, max=27, step=1, value=6.94, id='x', align = 'none', length=s_length)
+battery_slider = slider(bind=changeBatteryV, min=6.94, max=27, step=1, value=6.94, length=s_length)
 canva.append_to_caption('') 
 
 def changeMagnetStrength(evt):
     global magnetBField
     magnetBField = evt.value
-canva.append_to_caption(' Magnet Strength (0G-1678G): ') 
-V_slider = slider(bind=changeMagnetStrength, min=0, max=1678, step=1, value=0, id='x', align = 'none', length=s_length)
+
+canva.append_to_caption(' Magnet Strength (0G-167.8G): ') 
+magnet_slider = slider(bind=changeMagnetStrength, min=0, max=167.8, step=1, value=0, length=s_length)
 canva.append_to_caption('') 
 
 def changeMagnetMass(evt):
     global magnetMass
     magnetMass = evt.value
+    updateInertia()
 canva.append_to_caption('\n\n Magnet Mass (.1796kg-1.18kg): ') 
-V_slider = slider(bind=changeMagnetMass, min=.1796, max=1.18, step=.1, value=0.1, id='x', align = 'none', length=s_length)
+mass_slider = slider(bind=changeMagnetMass, min=.1796, max=1.18, step=.1, value=0.1, length=s_length)
 canva.append_to_caption('') 
+
+# ====================== UPDATE FUNCTIONS ======================
+def updatePhaseResistance(evt=None):
+    global phaseRs
+    turns_per_meter = turns_slider.value
+    turns_per_coil = turns_per_meter * motor_length
+    
+    coil_radius = stator_r + 1.5
+    circumference = 2 * pi * coil_radius
+    
+    total_wire_length = turns_per_coil * circumference
+    resistance_per_phase = wire_resistivity * total_wire_length / wire_cross_section
+    
+    phaseRs = [resistance_per_phase] * 3
+
+def updateInertia(evt=None):
+    global inertia
+    rotor_radius = 3.5
+    inertia = 0.5 * magnetMass * (rotor_radius ** 2)
 ##=========================================================
 #permanent magnet (rotating cylinder in the center)
 magnetSweep = [ vec(0, 0, temp_v1), vec(0, 0,temp_v1-motor_length) ]
@@ -221,54 +251,57 @@ def calculateBackEMFS():
     phaseBEMF[0]= -winding[0].coils*2*pi*omega 
 
 def applyPhaseCurrents(phase_arr):
-    global phases, phaseBfields
+    global phases
     for i in range(3):
-        if phase_arr[i] is None:
+        if phase_arr[i] == 0:
             phases[i] = 0
-            # phaseBfields[i] = 0
         else:
             phases[i] = phase_arr[i] * batteryV / phaseRs[i]
-            # phaseBfields[i] = phase_arr[i] * batteryV / phaseRs[i]
 
 def getNewStep():
     hall_sensors = getHallSensors()
     print("hall:", hall_sensors)
     if (hall_sensors == [1,0,1]):
-        applyPhaseCurrents([None, 0, 1])
+        applyPhaseCurrents([0, -1, 1])
         #CH BL
     elif (hall_sensors == [1,0,0]):
-        applyPhaseCurrents([1, 0, None])
+        applyPhaseCurrents([1, -1, 0])
         #AH BL
     elif (hall_sensors == [1,1,0]):
-        applyPhaseCurrents([1, None, 0])
+        applyPhaseCurrents([1, 0, -1])
         #AH CL
     elif (hall_sensors == [0,1,0]):
-        applyPhaseCurrents([None, 1, 0])
+        applyPhaseCurrents([0, 1, -1])
         #BH CL
     elif (hall_sensors == [0,1,1]):
-        applyPhaseCurrents([0, 1, None])
+        applyPhaseCurrents([-1, 1, 0])
         #BH AL  
     elif (hall_sensors == [0,0,1]):
-        applyPhaseCurrents([0, None, 1])
+        applyPhaseCurrents([-1, 0, 1])
         #CH AL
  
 def calculateTorque():
-    torque = 0
+    B = getMagnetBField()
+    torque = 0.0
+    L = vec(0, 0, motor_length) # current direction along z
+    
     for i in range(3):
-        coil_angle = pi_2_3 * i # angular position of coil i
-        coil_axis = vec(cos(coil_angle), sin(coil_angle), 0)
-
-        # Effective B at this coil, is projection of rotating magnetic field onto coil
-        B_eff = dot(getMagnetBField(), coil_axis)
+        coil_angle = pi_2_3 * i
+        r = stator_r * vec(cos(coil_angle), sin(coil_angle), 0) # vector to coil center
         
-        # F = ILB
-        F =  phases[i] * motor_length * B_eff # need to fix
+        # Force on coil: F = N * I * (L × B)
+        F = winding[i].coils * phases[i] * cross(L, B)
         
-        # Torque = r x F
-        torque += stator_r * F
+        # Torque vector: tau = r × F
+        tau = cross(r, F)
+        
+        # Component along motor axis (z)
+        torque += dot(tau, vec(0, 0, 1))
+    
     return torque
     
-
+updatePhaseResistance()
+updateInertia()
 while(1):
     rate(1/dt)
     getNewStep()
