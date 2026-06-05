@@ -3,9 +3,9 @@ from vpython import *
 #Web VPython 3.2    
 # -------------------------------GLOBAL CONSTANTS-------------------------------------
 pi_2_3=2*pi/3
-vector_thirds = [vec(cos(0), sin(0), 0), 
-                 vec(cos(pi_2_3), sin(pi_2_3), 0),
-                 vec(cos(2*pi_2_3), sin(2*pi_2_3), 0)]
+vector_thirds = [ vec(cos(pi_2_3/2), sin(pi_2_3/2), 0), #hall at 60 deg
+                 vec(cos(pi), sin(pi), 0),
+                 vec(cos(-pi/3), sin(-pi/3), 0)]
 # areaVector =[hat(vec()), hat(vec()), hat(vec())]
 # -------------------------------GLOBAL VARIABLES-------------------------------------
 stator_r =4
@@ -19,13 +19,13 @@ batteryV =6.94
 s_length = 200
 
 t=0
-dt=1/100
-theta=0
+dt=1/120
+theta=pi/2
 dtheta= 1*2*pi
 
 omega = 0 # angular vel
 inertia = 1  # moment of inertia
-damping = 10 # friction coefficient
+damping = 0 # friction coefficient
 
 corePermeability = 0
 magnetBField = 0
@@ -35,16 +35,16 @@ phases = [0, 0, 0] # Current in each phase A, B, C respectively, if i != 0 its o
 phaseRs = [2, 2, 2] # Resistance in each phase A, B, C respectively
 phaseBfields = [0, 0, 0]  #will be in units of T
 phaseBEMF = [0, 0, 0] # Back EMFs induced in each phase
-lastBField= [magnetBField*cos(theta+pi/2-0),
-             magnetBField*cos(theta+pi/2-pi_2_3),
-             magnetBField*cos(theta+pi/2+pi_2_3)]#last stored value of the BField perpendicular to each phase
+lastBField= [magnetBField*cos(theta-0),
+             magnetBField*cos(theta-pi_2_3),
+             magnetBField*cos(theta+pi_2_3)]#last stored value of the BField perpendicular to each phase
 
 wire_resistivity = 1.68e-8 # copper resistivity (ohm*m)
 wire_cross_section = 0.000001 # 1 mm^2
 
 timeStop = False
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
-canva = canvas(width=600, height=600, background=color.white, fov = 0.01, resizable=False, align = 'right') 
+canva = canvas(width=200, height=200, background=color.white, fov = 0.01, resizable=False, align = 'right') 
 def setDefaultView(evt):
     canva.forward = vector(0, 0, -1)
     canva.center = vector(0, 0, 1)
@@ -157,8 +157,8 @@ def changeMagnetStrength(evt):
     #          magnetBField*cos(theta+pi/2-2*pi_2_3)]
     for i in range(len(winding)):
         lastBField[i] =dot(getMagnetBField(),winding[i].axis)
-canva.append_to_caption(' Magnet Strength (0G-1678G): ') 
-magnet_slider = slider(bind=changeMagnetStrength, min=0, max=1678/1e4, step=1/1e4, value=0, length=s_length)
+canva.append_to_caption(' Magnet Strength (0G-167.8G): ') 
+magnet_slider = slider(bind=changeMagnetStrength, min=0, max=167.8/1e4, step=1/1e4, value=0, length=s_length)
 canva.append_to_caption('') 
 
 def changeMagnetMass(evt):
@@ -210,55 +210,44 @@ E_arrow = arrow(pos=vector(0,0,0), axis=vector(-5, 0, 0),
 torque_arrow = arrow(pos=vector(0,0,0), axis=vector(0, 0, 5),
                      shaftwidth=0.1, color=color.magenta)
 
-def rotatekTheta(theta):
-        mag.rotate(angle=theta, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
+def rotatekTheta(phi):
+        mag.rotate(angle=phi, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
 # # ================PLAYING IWTH GRAPHS======================
 dotSize=2   
-canva.append_to_caption('\n ================================================================= \n Legend : Phase A in RED, Phase B in blue, Phase C in cyan ') 
-g_t = graph(width=700, height=300, xtitle=("Angle (Radians)"), ytitle=("Torque (N*m)"), align='none', scroll =True, xmin =0, xmax = 2*pi)
+canva.append_to_caption('\n ================================================================= \n Legend : Phase A in RED, Phase B in CYAn, Phase C in BLUeE') 
+g_t = graph(width=750, height=200, xtitle=("Angle (π/3 Radians)"), ytitle=("Torque (N*m)"), align='none', scroll =True, xmin =0, xmax = 2*pi)
 t_curve=gcurve(color=color.magenta, size= dotSize,graph=g_t)
 
 canva.append_to_caption(' ') 
-g_v = graph(width=700, height=300, xtitle=("Time (seconds)"), ytitle=("Angular Vel. (Radians / s)"), align='none', scroll =True, xmin =0, xmax =5)
+g_v = graph(width=750, height=150, xtitle=("Time (seconds)"), ytitle=("Angular Vel. (Radians / s)"), align='none', scroll =True, xmin =0, xmax =3)
 v_curve=gcurve(color=color.cyan, size= dotSize,graph=g_v)
 
 canva.append_to_caption(' ') 
-g_a = graph(width=700, height=300, xtitle=("Time (seconds)"), ytitle=("Angular Accel. (Radians / s^2)"), align='none', scroll =True, xmin =0, xmax =5)
+g_a = graph(width=750, height=100, xtitle=("Time (seconds)"), ytitle=("Angular Accel. (Radians / s^2)"), align='none', scroll =True, xmin =0, xmax =3)
 a_curve=gcurve(color=color.green, size= dotSize,graph=g_a)
 
 canva.append_to_caption('  ') 
-g_bemf = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V))"), align='none',scroll =True, xmin =0, xmax = 5)
+g_bemf = graph(width=1000, height=150, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V))"), align='none',scroll =True, xmin =0, xmax = 4)
 # g_bemf = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V))"), align='none',scroll =True, xmin =0, xmax = 5, ymin = -10,  ymax = 10)
 phaseBEMFCurves = [None, None, None]
-phaseBEMFCurves[0]  =gcurve(color=color.red, size= dotSize,graph=g_bemf)
-phaseBEMFCurves[1]  =gcurve(color=color.cyan, size= dotSize,graph=g_bemf)
-phaseBEMFCurves[2]  =gcurve(color=color.blue, size= dotSize,graph=g_bemf)
+phaseBEMFCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_bemf)
+phaseBEMFCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_bemf)
+phaseBEMFCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_bemf)
 # phaseBEMFCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_bemf)
 # phaseBEMFCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_bemf)
 # phaseBEMFCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_bemf)
 
 canva.append_to_caption('  \n ') 
-g_i = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='none',scroll =True, xmin =0, xmax = 5)
+g_i = graph(width=1000, height=150, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='none',scroll =True, xmin =0, xmax = 4)
 iCurves = [None, None, None]
 iCurves[0]  =gcurve(color=color.red, size= dotSize,graph=g_i)
 iCurves[1]  =gcurve(color=color.cyan, size= dotSize,graph=g_i)
 iCurves[2]  =gcurve(color=color.blue, size= dotSize,graph=g_i)
 
 # THE PHYSICS  AND LOGIC BEHIND THIS
-# one represents north pole, including error margin to not glitch everything out
-def getHallSensors():
-    hallSensorValue = [None, None, None] #counterclockwise
-    global vector_thirds
-    for i in range(len(hallSensorValue)):
-        if (dot(vector_thirds[i], getMagnetBField()) > 0):
-           hallSensorValue[i] = 1  # the hall sensors sees a north pole 
-        else:
-            hallSensorValue[i] = 0    # the hall sensors sees a south pole 
-    return hallSensorValue
-
 def getMagnetBField():
     global theta, magnetBField
-    return magnetBField * vec(cos(theta+90), sin(theta+90), 0) #returns vector
+    return magnetBField * vec(cos(theta), sin(theta), 0) #returns vector
 
 def calculatePhaseBField():
     global phaseBfields
@@ -295,20 +284,32 @@ def applyPhaseCurrents(phase_arr):
         if(phases[i] != 0):
             netBEMF += abs(phaseBEMF[i])
             #print(str(phaseBEMF[i]) + ", " + str(i))
-    print("netBemf/batteryV + \n")
-    print(netBEMF/batteryV)
+    # print("netBemf/batteryV + \n")
+    # print(netBEMF/batteryV)
     for i in range(3):
         if phase_arr[i] == 0:
             phases[i] = 0
             winding[i].color=color.orange
         else:
-            phases[i] = phase_arr[i] * (batteryV-netBEMF) / (2*phaseRs[i])
+            phases[i] = phase_arr[i] * (batteryV) / (2*phaseRs[i])
             #bfield increasing towards the center = +
             # phases[i] = phase_arr[i] * (batteryV) / phaseRs[i]
             if phase_arr[i] == -1:
                 winding[i].color=color.red
             else:
                 winding[i].color=color.green
+
+# one represents north pole, including error margin to not glitch everything out
+def getHallSensors():
+    hallSensorValue = [None, None, None] #counterclockwise
+    global vector_thirds
+    for i in range(len(hallSensorValue)):
+        if (dot(vector_thirds[i], getMagnetBField()) > 0):
+           hallSensorValue[i] = 1  # the hall sensors sees a north pole 
+        else:
+            hallSensorValue[i] = 0    # the hall sensors sees a south pole 
+    return hallSensorValue
+
 
 def getNewStep():
     hall_sensors = getHallSensors()
@@ -356,21 +357,27 @@ def calculateTorque():
 updatePhaseResistance()
 updateInertia()
 while(1):
-    rate(1/dt)
+    rate(.5/dt)
     getNewStep()
     torque = calculateTorque()
-    alpha = (torque - damping * omega) / inertia
+    alpha = (torque ) / inertia
+    # alpha = (torque - damping * omega) / inertia
     omega += alpha * dt
     theta += omega * dt
+    print("\n t w a")
+    print(theta)
+    print(omega)
+    print(alpha)
+    print(torque)
     rotatekTheta(omega * dt)
     calculateBackEMFS()
-    t_curve.plot(theta, torque)
+    t_curve.plot((theta*3/pi)%6, torque)
     v_curve.plot(t, omega)
     a_curve.plot(t, alpha)
+    for i in range(3):
+        if phases[i] != 0:
+            phaseBEMFCurves[i].plot(t, phaseBEMF[i])
     iCurves[0].plot(t, phases[0])
     iCurves[1].plot(t, phases[1])
     iCurves[2].plot(t, phases[2])
-    phaseBEMFCurves[0].plot(t, phaseBEMF[0])
-    phaseBEMFCurves[1].plot(t, phaseBEMF[1])
-    phaseBEMFCurves[2].plot(t, phaseBEMF[2])
     t=t+dt
