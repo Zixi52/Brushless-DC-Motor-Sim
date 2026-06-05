@@ -10,8 +10,8 @@ vector_thirds = [vec(cos(0), sin(0), 0),
 # -------------------------------GLOBAL VARIABLES-------------------------------------
 stator_r =4
 
-# motor_length is also stator length rn
 motor_length = 10
+stator_length = 9
 originAxesLength = 3
 temp_v1 =-2
 batteryV =6.94
@@ -25,7 +25,7 @@ dtheta= 1*2*pi
 
 omega = 0 # angular vel
 inertia = 1  # moment of inertia
-damping = 2 # friction coefficient
+damping = 0.5 # friction coefficient
 
 corePermeability = 0
 magnetBField = 0
@@ -157,8 +157,8 @@ def changeMagnetStrength(evt):
     #          magnetBField*cos(theta+pi/2-2*pi_2_3)]
     for i in range(len(winding)):
         lastBField[i] =dot(getMagnetBField(),winding[i].axis)
-canva.append_to_caption(' Magnet Strength (0G-167.8G): ') 
-magnet_slider = slider(bind=changeMagnetStrength, min=0, max=167.8, step=1, value=0, length=s_length)
+canva.append_to_caption(' Magnet Strength (0G-1678G): ') 
+magnet_slider = slider(bind=changeMagnetStrength, min=0, max=1678/1e4, step=1/1e4, value=0, length=s_length)
 canva.append_to_caption('') 
 
 def changeMagnetMass(evt):
@@ -176,7 +176,7 @@ def updatePhaseResistance(evt=None):
     #solenoid length is 1m
     turns_per_coil = turns_per_meter * 1
     
-    coil_radius = stator_r + 1.5
+    coil_radius = winding[0].radius
     # coil_radius = winding[0].size.y
     circumference = 2 * pi * coil_radius
     
@@ -258,7 +258,7 @@ def getHallSensors():
 
 def getMagnetBField():
     global theta, magnetBField
-    return magnetBField / 10000 * vec(cos(theta+90), sin(theta+90), 0) #returns vector
+    return magnetBField * vec(cos(theta+90), sin(theta+90), 0) #returns vector
 
 def calculatePhaseBField():
     global phaseBfields
@@ -278,25 +278,31 @@ def calculateBackEMFS():
     for i in range(len(winding)):
         newBfield =dot(getMagnetBField(),winding[i].axis)
         dφ_dt = (newBfield - lastBField[i])/dt
-        t[i]=dφ_dt
+        # print("\n" + str(newBfield) + " new")
+        # print(str(lastBField[i]) + " old")
+        # print("difference:")
+        # print(dφ_dt)
+        # t[i]=dφ_dt
         #more bemf pointing towards the center = -d_phi/dt
         #more bemf pointing away from center = +d_phi/dt
-        phaseBEMF[i]= -sol.coils *sol.size.x*sol.size.y*dφ_dt
+        phaseBEMF[i]= -sol.coils *sol.size.z*sol.size.y*dφ_dt
         lastBField[i] = newBfield
     
 def applyPhaseCurrents(phase_arr):
     global phases, phaseBEMF,phases
     netBEMF = 0
+    print("\n")
     for i in range(3):
-        if(phases[i] !=0 ):
+        if(phases[i] != 0):
             netBEMF += phaseBEMF[i]
-    # print(batteryV+netBEMF)
+            #print(str(phaseBEMF[i]) + ", " + str(i))
+    print(netBEMF)
     for i in range(3):
         if phase_arr[i] == 0:
             phases[i] = 0
             winding[i].color=color.orange
         else:
-            phases[i] = phase_arr[i] * (batteryV) / (2*phaseRs[i])
+            phases[i] = phase_arr[i] * (batteryV+netBEMF) / (2*phaseRs[i])
             #bfield increasing towards the center = +
             # phases[i] = phase_arr[i] * (batteryV) / phaseRs[i]
             if phase_arr[i] == -1:
@@ -330,7 +336,7 @@ def getNewStep():
 def calculateTorque():
     B = getMagnetBField()
     torque = 0.0
-    L = vec(0, 0, motor_length) # current direction along z
+    L = vec(0, 0, stator_length) # current direction along z
     
     for i in range(3):
         coil_angle = pi_2_3 * i
