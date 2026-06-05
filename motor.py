@@ -25,7 +25,7 @@ dtheta= 1*2*pi
 
 omega = 0 # angular vel
 inertia = 1  # moment of inertia
-damping = 0.5 # friction coefficient
+damping = 10 # friction coefficient
 
 corePermeability = 0
 magnetBField = 0
@@ -291,18 +291,18 @@ def calculateBackEMFS():
 def applyPhaseCurrents(phase_arr):
     global phases, phaseBEMF,phases
     netBEMF = 0
-    print("\n")
     for i in range(3):
         if(phases[i] != 0):
-            netBEMF += phaseBEMF[i]
+            netBEMF += abs(phaseBEMF[i])
             #print(str(phaseBEMF[i]) + ", " + str(i))
-    print(netBEMF)
+    print("netBemf/batteryV + \n")
+    print(netBEMF/batteryV)
     for i in range(3):
         if phase_arr[i] == 0:
             phases[i] = 0
             winding[i].color=color.orange
         else:
-            phases[i] = phase_arr[i] * (batteryV+netBEMF) / (2*phaseRs[i])
+            phases[i] = phase_arr[i] * (batteryV-netBEMF) / (2*phaseRs[i])
             #bfield increasing towards the center = +
             # phases[i] = phase_arr[i] * (batteryV) / phaseRs[i]
             if phase_arr[i] == -1:
