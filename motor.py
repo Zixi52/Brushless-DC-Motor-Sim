@@ -19,13 +19,13 @@ batteryV =6.94
 s_length = 200
 
 t=0
-dt=1/50
+dt=1/100
 theta=0
 dtheta= 1*2*pi
 
 omega = 0 # angular vel
 inertia = 1  # moment of inertia
-damping = 1 # friction coefficient
+damping = 2 # friction coefficient
 
 corePermeability = 0
 magnetBField = 0
@@ -42,6 +42,7 @@ lastBField= [magnetBField*cos(theta+pi/2-0),
 wire_resistivity = 1.68e-8 # copper resistivity (ohm*m)
 wire_cross_section = 0.000001 # 1 mm^2
 
+timeStop = False
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
 canva = canvas(width=600, height=600, background=color.white, fov = 0.01, resizable=False, align = 'right') 
 def setDefaultView(evt):
@@ -58,19 +59,18 @@ hollow_stator_circle= shapes.circle(radius= stator_r, np= 40, angle1 = 0.0, angl
 stator_core =extrusion( color=color.gray(.7), shape=hollow_stator_circle, path=stator_core_line, opacity=1, twosided=True)
 hollow_motor_shell= shapes.circle(radius= stator_r*1.85, np= 40, angle1 = 0.0, angle2 = 4*pi/2, thickness =.1) 
 motor_shell =extrusion( color=color.gray(0), shape=hollow_motor_shell, path=stator_core_line, opacity=1)
-
 # Coil cores (arranged in a ring around the magnet) to show copper winding
 winding = [None,None,None]
 core = [None,None,None]
 for i in range(len(core)):
     v = vector(stator_r*cos(pi_2_3*i), stator_r*sin(pi_2_3*i), (stator_core_line[0].z+stator_core_line[1].z)/2)
     v2=vector(cos(pi_2_3*i), sin(pi_2_3*i), 0)
-    winding[i]=helix(pos=v,axis=hat(v2),
-                  radius=3, coils=8, thickness=0.2, color=color.orange,
-                  thicknesses=0.01, size =vec(2,4,motor_length)) # 4 is the width of inductor
     core[i] =box(pos= vec(v.x*1.3, v.y*1.3, v.z), length=3, height=2, width=motor_length*.5, color=color.gray(.7), axis = v2)
+    winding[i]=helix(pos=v, axis=hat(v2), 
+                  radius=3, coils=8, thickness=0.2, color=color.orange,
+                  thicknesses=0.01, size =vec(2,core[i].width*1.2,core[i].width*1.2)) #solenoid length, width (from top view), depth 
 def changeNumberCoils(evt):
-    print(evt)
+    # print(evt)
     for i in range(len(winding)):
         winding[i].coils = evt.value
      
@@ -112,6 +112,12 @@ def resetTimer(evt):
 canva.bind('keydown', resetTimer)
 canva.append_to_caption(' PRESS R TO RESTART SIMULATION YAY  ') 
 
+# def timeFreeze(evt):
+#     if evt.key == 't':
+#         timeStop != timeStop
+# canva.bind('keydown', timeFreeze)
+# canva.append_to_caption(' PRESS t so thanos pauses/unpuases time  ') 
+    
 clrbtn = button(bind=showOrigin, text='axes on')
 canva.append_to_caption('   ') 
 setDefaultView_b = button(bind=setDefaultView, text=' Reset View')
@@ -137,14 +143,20 @@ core_slider = slider(bind=changeCorePermeability, min=1, max=5414, step=1, value
 def changeBatteryV(evt):
     global batteryV
     batteryV = evt.value
+    g_bemf.ymin= -10.12 * batteryV
+    g_bemf.ymax= 10.12 * batteryV
 canva.append_to_caption('\n\n Battery Voltage (6.94V-51.6V): ') 
 battery_slider = slider(bind=changeBatteryV, min=6.94, max=27, step=1, value=6.94, length=s_length)
 canva.append_to_caption('') 
 
 def changeMagnetStrength(evt):
-    global magnetBField
+    global magnetBField, lastBField
     magnetBField = evt.value
-
+    # lastBField = [magnetBField*cos(theta+pi/2-0),
+    #          magnetBField*cos(theta+pi/2-pi_2_3),
+    #          magnetBField*cos(theta+pi/2-2*pi_2_3)]
+    for i in range(len(winding)):
+        lastBField[i] =dot(getMagnetBField(),winding[i].axis)
 canva.append_to_caption(' Magnet Strength (0G-167.8G): ') 
 magnet_slider = slider(bind=changeMagnetStrength, min=0, max=167.8, step=1, value=0, length=s_length)
 canva.append_to_caption('') 
@@ -161,9 +173,11 @@ canva.append_to_caption('')
 def updatePhaseResistance(evt=None):
     global phaseRs
     turns_per_meter = turns_slider.value
-    turns_per_coil = turns_per_meter * motor_length
+    #solenoid length is 1m
+    turns_per_coil = turns_per_meter * 1
     
     coil_radius = stator_r + 1.5
+    # coil_radius = winding[0].size.y
     circumference = 2 * pi * coil_radius
     
     total_wire_length = turns_per_coil * circumference
@@ -214,10 +228,14 @@ a_curve=gcurve(color=color.green, size= dotSize,graph=g_a)
 
 canva.append_to_caption('  ') 
 g_bemf = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V))"), align='none',scroll =True, xmin =0, xmax = 5)
+# g_bemf = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V))"), align='none',scroll =True, xmin =0, xmax = 5, ymin = -10,  ymax = 10)
 phaseBEMFCurves = [None, None, None]
-phaseBEMFCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_bemf)
-phaseBEMFCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_bemf)
-phaseBEMFCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_bemf)
+phaseBEMFCurves[0]  =gcurve(color=color.red, size= dotSize,graph=g_bemf)
+phaseBEMFCurves[1]  =gcurve(color=color.cyan, size= dotSize,graph=g_bemf)
+phaseBEMFCurves[2]  =gcurve(color=color.blue, size= dotSize,graph=g_bemf)
+# phaseBEMFCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_bemf)
+# phaseBEMFCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_bemf)
+# phaseBEMFCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_bemf)
 
 canva.append_to_caption('  \n ') 
 g_i = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='none',scroll =True, xmin =0, xmax = 5)
@@ -240,7 +258,7 @@ def getHallSensors():
 
 def getMagnetBField():
     global theta, magnetBField
-    return magnetBField / 10000 * vec(cos(theta), sin(theta), 0) #returns vector
+    return magnetBField / 10000 * vec(cos(theta+90), sin(theta+90), 0) #returns vector
 
 def calculatePhaseBField():
     global phaseBfields
@@ -256,21 +274,31 @@ def calculateBackEMFS():
     #V= -N[d(BA)/dt]
     #V= -N(pi*l*w)[dB/dt] for an ellipse cross-section
     sol=winding[0]
+    t=[0,0,0]
     for i in range(len(winding)):
         newBfield =dot(getMagnetBField(),winding[i].axis)
         dφ_dt = (newBfield - lastBField[i])/dt
+        t[i]=dφ_dt
+        #more bemf pointing towards the center = -d_phi/dt
+        #more bemf pointing away from center = +d_phi/dt
         phaseBEMF[i]= -sol.coils *sol.size.x*sol.size.y*dφ_dt
         lastBField[i] = newBfield
-    # print(phaseBEMF)
     
 def applyPhaseCurrents(phase_arr):
-    global phases
+    global phases, phaseBEMF,phases
+    netBEMF = 0
+    for i in range(3):
+        if(phases[i] !=0 ):
+            netBEMF += phaseBEMF[i]
+    # print(batteryV+netBEMF)
     for i in range(3):
         if phase_arr[i] == 0:
             phases[i] = 0
             winding[i].color=color.orange
         else:
-            phases[i] = phase_arr[i] * batteryV / phaseRs[i]
+            phases[i] = phase_arr[i] * (batteryV) / (2*phaseRs[i])
+            #bfield increasing towards the center = +
+            # phases[i] = phase_arr[i] * (batteryV) / phaseRs[i]
             if phase_arr[i] == -1:
                 winding[i].color=color.red
             else:
@@ -279,7 +307,7 @@ def applyPhaseCurrents(phase_arr):
 def getNewStep():
     hall_sensors = getHallSensors()
     #0 is float
-    print("hall:", hall_sensors)
+    # print("hall:", hall_sensors)
     if (hall_sensors == [1,0,1]):
         applyPhaseCurrents([0, -1, 1])
         #CH BL
@@ -329,8 +357,6 @@ while(1):
     omega += alpha * dt
     theta += omega * dt
     rotatekTheta(omega * dt)
-    # print(phases, batteryV, getMagnetBField())
-    # rotatekTheta(dtheta*dt)
     calculateBackEMFS()
     t_curve.plot(theta, torque)
     v_curve.plot(t, omega)
@@ -341,5 +367,4 @@ while(1):
     phaseBEMFCurves[0].plot(t, phaseBEMF[0])
     phaseBEMFCurves[1].plot(t, phaseBEMF[1])
     phaseBEMFCurves[2].plot(t, phaseBEMF[2])
-    # theta=theta+dtheta*dt
     t=t+dt
