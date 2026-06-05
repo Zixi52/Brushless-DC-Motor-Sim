@@ -6,6 +6,7 @@ pi_2_3=2*pi/3
 vector_thirds = [vec(cos(0), sin(0), 0), 
                  vec(cos(pi_2_3), sin(pi_2_3), 0),
                  vec(cos(2*pi_2_3), sin(2*pi_2_3), 0)]
+# areaVector =[hat(vec()), hat(vec()), hat(vec())]
 # -------------------------------GLOBAL VARIABLES-------------------------------------
 stator_r =4
 
@@ -26,14 +27,17 @@ omega = 0 # angular vel
 inertia = 1  # moment of inertia
 damping = 1 # friction coefficient
 
+corePermeability = 0
+magnetBField = 0
+magnetMass = 0.1
+
 phases = [0, 0, 0] # Current in each phase A, B, C respectively, if i != 0 its on
 phaseRs = [2, 2, 2] # Resistance in each phase A, B, C respectively
 phaseBfields = [0, 0, 0]  #will be in units of T
 phaseBEMF = [0, 0, 0] # Back EMFs induced in each phase
-
-corePermeability = 0
-magnetBField = 0
-magnetMass = 0.1
+lastBField= [magnetBField*cos(theta+pi/2-0),
+             magnetBField*cos(theta+pi/2-pi_2_3),
+             magnetBField*cos(theta+pi/2+pi_2_3)]#last stored value of the BField perpendicular to each phase
 
 wire_resistivity = 1.68e-8 # copper resistivity (ohm*m)
 wire_cross_section = 0.000001 # 1 mm^2
@@ -61,7 +65,7 @@ core = [None,None,None]
 for i in range(len(core)):
     v = vector(stator_r*cos(pi_2_3*i), stator_r*sin(pi_2_3*i), (stator_core_line[0].z+stator_core_line[1].z)/2)
     v2=vector(cos(pi_2_3*i), sin(pi_2_3*i), 0)
-    winding[i]=helix(pos=v,axis=v2,
+    winding[i]=helix(pos=v,axis=hat(v2),
                   radius=3, coils=8, thickness=0.2, color=color.orange,
                   thicknesses=0.01, size =vec(2,4,motor_length)) # 4 is the width of inductor
     core[i] =box(pos= vec(v.x*1.3, v.y*1.3, v.z), length=3, height=2, width=motor_length*.5, color=color.gray(.7), axis = v2)
@@ -245,21 +249,36 @@ def calculateBackEMFS():
     global phaseBEMF #in volts
     #the componentof magnet's b field in each direction is 
     getMagnetBField()
+    global phaseBEMF, lastBField
     #b field of a,b,c: sonion(theta+pi), sonion(theta+pi/3), sonion(theta-pi/3)
     #db/dt a,b,c: cos(theta+pi), cos(theta+pi/3), cos(theta-pi/3)
-    #NAw* B(cos(theta+phi))
-    phaseBEMF[0]= -winding[0].coils*2*pi*omega 
-
+    #V= -N dφ/dt
+    #V= -N[d(BA)/dt]
+    #V= -N(pi*l*w)[dB/dt] for an ellipse cross-section
+    sol=winding[0]
+    for i in range(len(winding)):
+        newBfield =dot(getMagnetBField(),winding[i].axis)
+        dφ_dt = (newBfield - lastBField[i])/dt
+        phaseBEMF[i]= -sol.coils *sol.size.x*sol.size.y*dφ_dt
+        lastBField[i] = newBfield
+    # print(phaseBEMF)
+    
 def applyPhaseCurrents(phase_arr):
     global phases
     for i in range(3):
         if phase_arr[i] == 0:
             phases[i] = 0
+            winding[i].color=color.orange
         else:
             phases[i] = phase_arr[i] * batteryV / phaseRs[i]
+            if phase_arr[i] == -1:
+                winding[i].color=color.red
+            else:
+                winding[i].color=color.green
 
 def getNewStep():
     hall_sensors = getHallSensors()
+    #0 is float
     print("hall:", hall_sensors)
     if (hall_sensors == [1,0,1]):
         applyPhaseCurrents([0, -1, 1])
@@ -312,14 +331,15 @@ while(1):
     rotatekTheta(omega * dt)
     # print(phases, batteryV, getMagnetBField())
     # rotatekTheta(dtheta*dt)
+    calculateBackEMFS()
     t_curve.plot(theta, torque)
     v_curve.plot(t, omega)
     a_curve.plot(t, alpha)
     iCurves[0].plot(t, phases[0])
     iCurves[1].plot(t, phases[1])
     iCurves[2].plot(t, phases[2])
-    phaseBEMFCurves[0].plot(t, sin(theta))
-    phaseBEMFCurves[1].plot(t, sin(theta+pi_2_3))
-    phaseBEMFCurves[2].plot(t, sin(theta-pi_2_3))
+    phaseBEMFCurves[0].plot(t, phaseBEMF[0])
+    phaseBEMFCurves[1].plot(t, phaseBEMF[1])
+    phaseBEMFCurves[2].plot(t, phaseBEMF[2])
     # theta=theta+dtheta*dt
     t=t+dt
