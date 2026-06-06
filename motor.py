@@ -336,12 +336,13 @@ def getNewStep():
  
 def calculateTorque():
     B = getMagnetBField()
+    print("\n magB perp, t")
     torque = 0.0
     L = vec(0, 0, stator_length) # current direction along z
     
     for i in range(3):
         coil_angle = pi_2_3 * i
-        r = stator_r * vec(cos(coil_angle), sin(coil_angle), 0) # vector to coil center
+        r = stator_r * vec(cos(coil_angle), sin(coil_angle), 0) # normal vector to coil center
         
         # Force on coil: F = N * I * (L × B)
         F = winding[i].coils * phases[i] * cross(L, B)
@@ -351,7 +352,6 @@ def calculateTorque():
         
         # Component along motor axis (z)
         torque += dot(tau, vec(0, 0, 1))
-    
     return torque
     
 updatePhaseResistance()
@@ -364,11 +364,6 @@ while(1):
     # alpha = (torque - damping * omega) / inertia
     omega += alpha * dt
     theta += omega * dt
-    print("\n t w a")
-    print(theta)
-    print(omega)
-    print(alpha)
-    print(torque)
     rotatekTheta(omega * dt)
     calculateBackEMFS()
     t_curve.plot((theta*3/pi)%6, torque)
