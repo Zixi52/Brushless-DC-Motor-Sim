@@ -246,7 +246,7 @@ iCurves[2]  =gcurve(color=color.blue, size= dotSize,graph=g_i)
 # THE PHYSICS  AND LOGIC BEHIND THIS
 def getMagnetBField():
     global theta, magnetBField
-    return magnetBField * vec(cos(theta), sin(theta), 0) #returns vector
+    return magnetBField * vec(cos(theta+pi/2), sin(theta+pi/2), 0) #returns vector
 
 def calculatePhaseBField():
     global phaseBfields
@@ -386,7 +386,7 @@ while(1):
     statorDir = vec(0, 0, 0)
     for i in range(3):
         coil_angle = pi_2_3 * i
-        statorDir += phases[i] * vec(cos(coil_angle), sin(coil_angle), 0)
+        statorDir += phases[i] * vec(cos(coil_angle+pi/2), sin(coil_angle+pi), 0)
     if mag(statorDir) > 0:
         E_arrow.pos = vec(0, 0, 0)
         E_arrow.axis = hat(statorDir) * 3 # points in net current direction
