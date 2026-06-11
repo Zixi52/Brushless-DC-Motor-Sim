@@ -3,9 +3,12 @@ from vpython import *
 #Web VPython 3.2    
 # -------------------------------GLOBAL CONSTANTS-------------------------------------
 pi_2_3=2*pi/3
-vector_thirds = [ vec(cos(pi_2_3/2), sin(pi_2_3/2), 0), #hall at 60 deg
-                 vec(cos(pi), sin(pi), 0),
-                 vec(cos(-pi/3), sin(-pi/3), 0)]
+offset = -pi/6  # 30 degrees
+vector_thirds = [
+    vec(cos(pi_2_3/2 + offset), sin(pi_2_3/2 + offset), 0),
+    vec(cos(pi      + offset), sin(pi      + offset), 0),
+    vec(cos(-pi/3   + offset), sin(-pi/3   + offset), 0)
+]
 # areaVector =[hat(vec()), hat(vec()), hat(vec())]
 # -------------------------------GLOBAL VARIABLES-------------------------------------
 stator_r =4
@@ -20,7 +23,7 @@ s_length = 200
 
 t=0
 dt=1/120
-theta=pi/2
+theta=0
 dtheta= 1*2*pi
 
 omega = 0 # angular vel
@@ -28,7 +31,7 @@ inertia = 1  # moment of inertia
 damping = 0 # friction coefficient
 
 corePermeability = 0
-magnetBField = 0
+magnetBField = 167.8/1e4
 magnetMass = 0.1
 
 phases = [0, 0, 0] # Current in each phase A, B, C respectively, if i != 0 its on
@@ -158,7 +161,7 @@ def changeMagnetStrength(evt):
     for i in range(len(winding)):
         lastBField[i] =dot(getMagnetBField(),winding[i].axis)
 canva.append_to_caption(' Magnet Strength (0G-167.8G): ') 
-magnet_slider = slider(bind=changeMagnetStrength, min=0, max=167.8/1e4, step=1/1e4, value=0, length=s_length)
+magnet_slider = slider(bind=changeMagnetStrength, min=0, max=167.8/1e4, step=1/1e4, value=167.8/1e4, length=s_length)
 canva.append_to_caption('') 
 
 def changeMagnetMass(evt):
@@ -187,7 +190,7 @@ def updatePhaseResistance(evt=None):
 
 def updateInertia(evt=None):
     global inertia
-    rotor_radius = 3.5
+    rotor_radius = 3.5 * 0.01
     inertia = 0.5 * magnetMass * (rotor_radius ** 2)
 ##=========================================================
 #permanent magnet (rotating cylinder in the center)
@@ -214,8 +217,8 @@ def rotatekTheta(phi):
         mag.rotate(angle=phi, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
 # # ================PLAYING IWTH GRAPHS======================
 dotSize=2   
-canva.append_to_caption('\n ================================================================= \n Legend : Phase A in RED, Phase B in CYAn, Phase C in BLUeE') 
-g_t = graph(width=750, height=200, xtitle=("Angle (π/3 Radians)"), ytitle=("Torque (N*m)"), align='none', scroll =True, xmin =0, xmax = 2*pi)
+canva.append_to_caption('\n ================================================================= \n Legend : Phase A in RED, Phase B in CYAN, Phase C in BLUE') 
+g_t = graph(width=750, height=200, xtitle=("Angle (Radians)"), ytitle=("Torque (N*m)"), align='none', scroll =True, xmin =0, xmax=6)
 t_curve=gcurve(color=color.magenta, size= dotSize,graph=g_t)
 
 canva.append_to_caption(' ') 
@@ -274,14 +277,16 @@ def calculateBackEMFS():
         # t[i]=dφ_dt
         #more bemf pointing towards the center = -d_phi/dt
         #more bemf pointing away from center = +d_phi/dt
-        phaseBEMF[i]= -sol.coils *sol.size.z*sol.size.y*dφ_dt
+        # phaseBEMF[i]= -sol.coils *sol.size.z*sol.size.y*dφ_dt
+        coil_area = pi * (winding[i].radius*0.01)**2  # actual coil cross section, scaled units down
+        phaseBEMF[i] = -sol.coils * coil_area * dφ_dt
         lastBField[i] = newBfield
     
 def applyPhaseCurrents(phase_arr):
     global phases, phaseBEMF,phases
     netBEMF = 0
     for i in range(3):
-        if(phases[i] != 0):
+        if(phase_arr[i] != 0):
             netBEMF += abs(phaseBEMF[i])
             #print(str(phaseBEMF[i]) + ", " + str(i))
     # print("netBemf/batteryV + \n")
@@ -291,7 +296,8 @@ def applyPhaseCurrents(phase_arr):
             phases[i] = 0
             winding[i].color=color.orange
         else:
-            phases[i] = phase_arr[i] * (batteryV) / (2*phaseRs[i])
+            # fixed formula to add bemfs
+            phases[i] = phase_arr[i] * (batteryV - netBEMF) / (2*phaseRs[i])
             #bfield increasing towards the center = +
             # phases[i] = phase_arr[i] * (batteryV) / phaseRs[i]
             if phase_arr[i] == -1:
@@ -333,31 +339,45 @@ def getNewStep():
     elif (hall_sensors == [0,0,1]):
         applyPhaseCurrents([-1, 0, 1])
         #CH AL
+    else:
+        print("unhandled hall state:", hall_sensors)
  
 def calculateTorque():
-    B = getMagnetBField()
-    print("\n magB perp, t")
-    torque = 0.0
-    L = vec(0, 0, stator_length) # current direction along z
+    # B = getMagnetBField()
+    # # print("\n magB perp, t")
+    # torque = 0.0
+    # # L = vec(0, 0, stator_length) 
     
+    # for i in range(3):
+    #     L = stator_length * winding[i].axis # current direction along z
+    #     coil_angle = pi_2_3 * i
+    #     r = stator_r * vec(cos(coil_angle), sin(coil_angle), 0) # normal vector to coil center
+        
+    #     # Force on coil: F = N * I * (L × B)
+    #     F = winding[i].coils * phases[i] * cross(L, B)
+        
+    #     # Torque vector: tau = r × F
+    #     tau = cross(r, F)
+        
+    #     # Component along motor axis (z)
+    #     torque += dot(tau, vec(0, 0, 1))
+    # return torque
+    statorB = vec(0, 0, 0)
     for i in range(3):
         coil_angle = pi_2_3 * i
-        r = stator_r * vec(cos(coil_angle), sin(coil_angle), 0) # normal vector to coil center
-        
-        # Force on coil: F = N * I * (L × B)
-        F = winding[i].coils * phases[i] * cross(L, B)
-        
-        # Torque vector: tau = r × F
-        tau = cross(r, F)
-        
-        # Component along motor axis (z)
-        torque += dot(tau, vec(0, 0, 1))
-    return torque
+        coil_axis = vec(cos(coil_angle), sin(coil_angle), 0)
+        statorB += winding[i].coils * phases[i] * coil_axis
+
+    mu = - magnetBField * 0.01**2 * vec(cos(theta), sin(theta), 0)
+    
+    tau = cross(mu, statorB)
+    return dot(tau, vec(0, 0, 1))
     
 updatePhaseResistance()
 updateInertia()
 while(1):
     rate(.5/dt)
+    calculateBackEMFS()
     getNewStep()
     torque = calculateTorque()
     alpha = (torque ) / inertia
@@ -365,8 +385,7 @@ while(1):
     omega += alpha * dt
     theta += omega * dt
     rotatekTheta(omega * dt)
-    calculateBackEMFS()
-    t_curve.plot((theta*3/pi)%6, torque)
+    t_curve.plot(theta, torque)
     v_curve.plot(t, omega)
     a_curve.plot(t, alpha)
     for i in range(3):
