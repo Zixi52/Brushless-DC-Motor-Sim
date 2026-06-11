@@ -23,13 +23,13 @@ batteryV =6.94
 s_length = 200
 
 t=0
-dt=1/1000
+dt=1/500
 theta=0
 dtheta= 1*2*pi
 
 omega = 0 # angular vel
 inertia = 1  # moment of inertia
-damping = 0 # friction coefficient
+damping = 0.00005 # friction coefficient
 
 corePermeability = 0
 magnetBField = 0
@@ -39,16 +39,14 @@ phases = [0, 0, 0] # Current in each phase A, B, C respectively, if i != 0 its o
 phaseRs = [2, 2, 2] # Resistance in each phase A, B, C respectively
 phaseBfields = [0, 0, 0]  #will be in units of T
 phaseBEMF = [0, 0, 0] # Back EMFs induced in each phase
-lastBField= [magnetBField*cos(theta-0),
-             magnetBField*cos(theta-pi_2_3),
-             magnetBField*cos(theta+pi_2_3)]#last stored value of the BField perpendicular to each phase
+lastBField= [0, 0, 0]#last stored value of the BField perpendicular to each phase
 
 wire_resistivity = 1.68e-8 # copper resistivity (ohm*m)
 wire_cross_section = 1e-8 # 0.01 mm^2
 
 timeStop = False
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
-canva = canvas(width=200, height=200, background=color.white, fov = 0.01, resizable=False, align = 'right') 
+canva = canvas(width=500, height=500, background=color.white, fov = 0.01, resizable=False, align = 'right') 
 def setDefaultView(evt):
     canva.forward = vector(0, 0, -1)
     canva.center = vector(0, 0, 1)
@@ -199,7 +197,7 @@ northPole = extrusion( shape=north_disk, path=magnetSweep, color= color.red, opa
 
 south_disk= shapes.circle(radius= 3.5, np= 22, scale =1, angle1=pi, angle2 = 2*pi)
 southPole = extrusion( shape=south_disk, path=magnetSweep,color= color.blue , twosided=True)
-mag = compound([northPole, southPole], axis = vec(1,0,0))
+magnet = compound([northPole, southPole], axis = vec(1,0,0))
 
         
 # Magnetic field arrow through a coil
@@ -209,38 +207,37 @@ B_arrow = arrow(pos=vector(3.5, 0, 0), axis=vector(0, 2, 0),
 E_arrow = arrow(pos=vector(0,0,0), axis=vector(-5, 0, 0),
                 shaftwidth=0.1, color=color.yellow)
 # Torque vector on the magnet
-torque_arrow = arrow(pos=vector(0,0,0), axis=vector(0, 0, 5),
-                     shaftwidth=0.1, color=color.magenta)
+# torque_arrow = arrow(pos=vector(0,0,0), axis=vector(0, 0, 5),
+#                      shaftwidth=0.1, color=color.magenta)
+torque_ring = ring(pos=vec(0, 0, 3), axis=vec(0, 0, 1), 
+                   radius=1, thickness=0.05, color=color.magenta)
 
 def rotatekTheta(phi):
-        mag.rotate(angle=phi, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
+        magnet.rotate(angle=phi, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
 # # ================PLAYING IWTH GRAPHS======================
 dotSize=2   
 canva.append_to_caption('\n ================================================================= \n Legend : Phase A in RED, Phase B in CYAN, Phase C in BLUE') 
-g_t = graph(width=750, height=200, xtitle=("Angle (Radians)"), ytitle=("Torque (N*m)"), align='none', scroll =True, xmin =0, xmax=6)
+g_t = graph(width=750, height=300, xtitle=("Angle (Radians)"), ytitle=("Torque (N*m)"), align='left', scroll =True, xmin =0, xmax=6)
 t_curve=gcurve(color=color.magenta, size= dotSize,graph=g_t)
 
-canva.append_to_caption(' ') 
-g_v = graph(width=750, height=150, xtitle=("Time (seconds)"), ytitle=("Angular Vel. (Radians / s)"), align='none', scroll =True, xmin =0, xmax =3)
+# canva.append_to_caption(' \n') 
+g_v = graph(width=750, height=250, xtitle=("Time (seconds)"), ytitle=("Angular Vel. (Radians / s)"), align='left', scroll =True, xmin =0, xmax =3)
 v_curve=gcurve(color=color.cyan, size= dotSize,graph=g_v)
 
-canva.append_to_caption(' ') 
-g_a = graph(width=750, height=100, xtitle=("Time (seconds)"), ytitle=("Angular Accel. (Radians / s^2)"), align='none', scroll =True, xmin =0, xmax =3)
+# canva.append_to_caption(' ') 
+g_a = graph(width=750, height=250, xtitle=("Time (seconds)"), ytitle=("Angular Accel. (Radians / s^2)"), align='left', scroll =True, xmin =0, xmax =3)
 a_curve=gcurve(color=color.green, size= dotSize,graph=g_a)
 
-canva.append_to_caption('  ') 
-g_bemf = graph(width=1000, height=150, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V))"), align='none',scroll =True, xmin =0, xmax = 4)
+# canva.append_to_caption(' \n') 
+g_bemf = graph(width=1000, height=250, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V)"), align='left',scroll =True, xmin =0, xmax = 4)
 # g_bemf = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V))"), align='none',scroll =True, xmin =0, xmax = 5, ymin = -10,  ymax = 10)
 phaseBEMFCurves = [None, None, None]
 phaseBEMFCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_bemf)
 phaseBEMFCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_bemf)
 phaseBEMFCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_bemf)
-# phaseBEMFCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_bemf)
-# phaseBEMFCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_bemf)
-# phaseBEMFCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_bemf)
 
-canva.append_to_caption('  \n ') 
-g_i = graph(width=1000, height=150, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='none',scroll =True, xmin =0, xmax = 4)
+# canva.append_to_caption(' ') 
+g_i = graph(width=1000, height=250, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='left',scroll =True, xmin =0, xmax = 4)
 iCurves = [None, None, None]
 iCurves[0]  =gcurve(color=color.red, size= dotSize,graph=g_i)
 iCurves[1]  =gcurve(color=color.cyan, size= dotSize,graph=g_i)
@@ -366,8 +363,8 @@ while(1):
     calculateBackEMFS()
     getNewStep()
     torque = calculateTorque()
-    alpha = (torque ) / inertia
-    # alpha = (torque - damping * omega) / inertia
+    # alpha = (torque ) / inertia
+    alpha = (torque - damping * omega) / inertia
     omega += alpha * dt
     theta += omega * dt
     rotatekTheta(omega * dt)
@@ -375,9 +372,26 @@ while(1):
     v_curve.plot(t, omega)
     a_curve.plot(t, alpha)
     for i in range(3):
-        if phases[i] != 0:
-            phaseBEMFCurves[i].plot(t, phaseBEMF[i])
+        phaseBEMFCurves[i].plot(t, phaseBEMF[i])
     iCurves[0].plot(t, phases[0])
     iCurves[1].plot(t, phases[1])
     iCurves[2].plot(t, phases[2])
+    # update visual arrows
+    B = getMagnetBField()
+    if mag(B) > 0:
+        B_arrow.pos = 3.5 * hat(B) # sits on rotor surface pointing outward
+        B_arrow.axis = hat(B) * 3  # points in field direction
+
+    # net stator current direction: weighted sum of active phase directions
+    statorDir = vec(0, 0, 0)
+    for i in range(3):
+        coil_angle = pi_2_3 * i
+        statorDir += phases[i] * vec(cos(coil_angle), sin(coil_angle), 0)
+    if mag(statorDir) > 0:
+        E_arrow.pos = vec(0, 0, 0)
+        E_arrow.axis = hat(statorDir) * 3 # points in net current direction
+
+    # torque arrow along z axis
+    torque_ring.radius = abs(torque) * 500 # random scale
+    torque_ring.color = color.magenta if torque > 0 else color.red  # direction indicator
     t=t+dt
