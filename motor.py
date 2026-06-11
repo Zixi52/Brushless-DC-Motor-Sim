@@ -3,6 +3,7 @@ from vpython import *
 #Web VPython 3.2    
 # -------------------------------GLOBAL CONSTANTS-------------------------------------
 pi_2_3=2*pi/3
+SCALE = 0.01 # let 1 vpython unit = 0.01 m
 offset = -pi/6  # 30 degrees
 vector_thirds = [
     vec(cos(pi_2_3/2 + offset), sin(pi_2_3/2 + offset), 0),
@@ -22,7 +23,7 @@ batteryV =6.94
 s_length = 200
 
 t=0
-dt=1/120
+dt=1/1000
 theta=0
 dtheta= 1*2*pi
 
@@ -31,7 +32,7 @@ inertia = 1  # moment of inertia
 damping = 0 # friction coefficient
 
 corePermeability = 0
-magnetBField = 167.8/1e4
+magnetBField = 0
 magnetMass = 0.1
 
 phases = [0, 0, 0] # Current in each phase A, B, C respectively, if i != 0 its on
@@ -43,7 +44,7 @@ lastBField= [magnetBField*cos(theta-0),
              magnetBField*cos(theta+pi_2_3)]#last stored value of the BField perpendicular to each phase
 
 wire_resistivity = 1.68e-8 # copper resistivity (ohm*m)
-wire_cross_section = 0.000001 # 1 mm^2
+wire_cross_section = 1e-8 # 0.01 mm^2
 
 timeStop = False
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
@@ -125,7 +126,7 @@ clrbtn = button(bind=showOrigin, text='axes on')
 canva.append_to_caption('   ') 
 setDefaultView_b = button(bind=setDefaultView, text=' Reset View')
 
-canva.append_to_caption('\n\n  Turns per Length (5-15 turns/m):') 
+canva.append_to_caption('\n\n  Turns per Coil (5-15 turns):') 
 turns_slider = slider(bind=changeNumberCoils, 
                       max=15, min=5, step=1, value=8, 
                       length=s_length)
@@ -161,7 +162,7 @@ def changeMagnetStrength(evt):
     for i in range(len(winding)):
         lastBField[i] =dot(getMagnetBField(),winding[i].axis)
 canva.append_to_caption(' Magnet Strength (0G-167.8G): ') 
-magnet_slider = slider(bind=changeMagnetStrength, min=0, max=167.8/1e4, step=1/1e4, value=167.8/1e4, length=s_length)
+magnet_slider = slider(bind=changeMagnetStrength, min=0, max=167.8/1e4, step=1/1e4, value=0, length=s_length)
 canva.append_to_caption('') 
 
 def changeMagnetMass(evt):
@@ -175,11 +176,9 @@ canva.append_to_caption('')
 # ====================== UPDATE FUNCTIONS ======================
 def updatePhaseResistance(evt=None):
     global phaseRs
-    turns_per_meter = turns_slider.value
-    #solenoid length is 1m
-    turns_per_coil = turns_per_meter * 1
+    turns_per_coil = turns_slider.value
     
-    coil_radius = winding[0].radius
+    coil_radius = winding[0].radius * SCALE
     # coil_radius = winding[0].size.y
     circumference = 2 * pi * coil_radius
     
@@ -190,7 +189,7 @@ def updatePhaseResistance(evt=None):
 
 def updateInertia(evt=None):
     global inertia
-    rotor_radius = 3.5 * 0.01
+    rotor_radius = 3.5 * SCALE
     inertia = 0.5 * magnetMass * (rotor_radius ** 2)
 ##=========================================================
 #permanent magnet (rotating cylinder in the center)
@@ -278,7 +277,7 @@ def calculateBackEMFS():
         #more bemf pointing towards the center = -d_phi/dt
         #more bemf pointing away from center = +d_phi/dt
         # phaseBEMF[i]= -sol.coils *sol.size.z*sol.size.y*dφ_dt
-        coil_area = pi * (winding[i].radius*0.01)**2  # actual coil cross section, scaled units down
+        coil_area = pi * (winding[i].radius*SCALE)**2  # actual coil cross section, scaled units down
         phaseBEMF[i] = -sol.coils * coil_area * dφ_dt
         lastBField[i] = newBfield
     
@@ -343,35 +342,22 @@ def getNewStep():
         print("unhandled hall state:", hall_sensors)
  
 def calculateTorque():
-    # B = getMagnetBField()
-    # # print("\n magB perp, t")
-    # torque = 0.0
-    # # L = vec(0, 0, stator_length) 
-    
-    # for i in range(3):
-    #     L = stator_length * winding[i].axis # current direction along z
-    #     coil_angle = pi_2_3 * i
-    #     r = stator_r * vec(cos(coil_angle), sin(coil_angle), 0) # normal vector to coil center
-        
-    #     # Force on coil: F = N * I * (L × B)
-    #     F = winding[i].coils * phases[i] * cross(L, B)
-        
-    #     # Torque vector: tau = r × F
-    #     tau = cross(r, F)
-        
-    #     # Component along motor axis (z)
-    #     torque += dot(tau, vec(0, 0, 1))
-    # return torque
-    statorB = vec(0, 0, 0)
+    B_magnet = getMagnetBField()  # field at stator coils
+    torque = 0.0
     for i in range(3):
         coil_angle = pi_2_3 * i
         coil_axis = vec(cos(coil_angle), sin(coil_angle), 0)
-        statorB += winding[i].coils * phases[i] * coil_axis
-
-    mu = - magnetBField * 0.01**2 * vec(cos(theta), sin(theta), 0)
-    
-    tau = cross(mu, statorB)
-    return dot(tau, vec(0, 0, 1))
+        coil_area = pi * (winding[i].radius * SCALE)**2
+        
+        # stator coil dipole moment: mu = N I A (direction = coil axis)
+        N = winding[i].coils
+        I = phases[i]
+        mu = N * I * coil_area * coil_axis
+        
+        # torque on this coil's dipole in magnet field
+        tau = cross(mu, B_magnet)
+        torque += dot(tau, vec(0, 0, 1)) # z-axis
+    return torque
     
 updatePhaseResistance()
 updateInertia()
