@@ -4,11 +4,10 @@ by Ethan Lin and Zixi Qiao
 
 Overview:
 
-Welcome back guys to another Youtube video! Today, we are investigating and simulating how a Brushless DC motor work. 
-A DC motor uses magnetic forces between a current carrying solenoid and a magnetic field to generate torque on the motor, causing it to spin. The currents have to be constantly switching, or commutating, to reorient the magnet. In normal Brushed DC motor, that is done by physical and machanical commutators.
+A DC motor uses magnetic forces between a current carrying solenoid and a magnetic field to generate torque on the motor, causing it to spin. The currents have to be constantly switching, or commutating, to reorient the magnet. In a brushed DC motor, that is done by physical and mechanical commutators.
 
 However, this is a simulation of a brushless DC motor with a 6 block commutation algorithm. This motor contains a cylindrical magnet (rotor) in the center surrounded by three stator solenoids (aka windings/phases), where the commutation is done electrically. In a motor, the maximum torque is generated when the magnetic fields of the rotor and stator are orthogonal. 6 step commutation mimics that by turning on phases (or sending currents through phases) such that the net B field is orthogonal to the rotor's B field.
-    To do that, one hall sensor is place physically in the midpoint of each phase (labeled hall sensor 1, 2, and 3 counterclockwise, which corresponds to index 0, 1, and 2). A hall sensor will report a value of 1 when it is facing the north pole of the rotor magnet, and 0 at the south pole.
+    To do that, one hall sensor is placed physically in the midpoint of each phase (labeled hall sensor 1, 2, and 3 counterclockwise, which corresponds to index 0, 1, and 2). A hall sensor will report a value of 1 when it is facing the north pole of the rotor magnet, and 0 at the south pole.
     
     This yields the following combinations. 
       Assuming that position theta (not the same one in the code) of 0 degrees corresponds to the angle at +x. At t=0, the B-field is at 90 degrees. This gives us all the sensor possible combinations, which correspond to the magnet B-Field being at the positions:
@@ -20,9 +19,7 @@ However, this is a simulation of a brushless DC motor with a 6 block commutation
     [0, 1, 1]                                   ==>              (210, 270) (Sector 4)
     [0, 0, 1]                                   ==>             (270, 330) (Sector 5)
     
-    We can model the current in each phase on a 2d plane using a3 axis graph,w here each axis is 120 degrees apart from each other
-
-    
+    We can model the current in each phase on a 2d plane using a 3-axis graph, where each axis is 120 degrees apart from each other.
 
 
 Physics:
@@ -33,7 +30,7 @@ Then, you find the cross product of mu and the magnet's B field to find torque.
 
 When the magnet rotates, you also have to account for the back EMF generated that affects each phase's current, accelerating or decelerating the magnet. The formula for this is EMF = -N dφ/dt = -N d(BA)/dt = - N A dB/dt, where N is the number of coils, dφ/dt is the change in flux with respect to time, A is the area of the coil's cross-section, and B is the magnet's B field on the coil. In each time step, we calculate the current magnet's B field and store the previous value of the magnet's B field. Then, we divide by the time step to get the approximate dB/dt. Then, we use Kirchhoff's Voltage Law to find the current in each phase.
 
-For simplicity's sake, we assume that the inductance is always in the steady state, so we don't have to apply its effects opposing changes in electric current and we just treat the inductor as a wire with zero resistance.
+For simplicity's sake, we assume the circuit reaches steady-state instantly and treat it as purely resistive, ignoring the inductor's opposition to changing current.
 
 
 Graphs:
@@ -41,21 +38,30 @@ Graphs:
 We graph the torque on the rotor vs the angle of the rotor. We also graph the angular velocity, angular acceleration, induced back EMFs, and current in each phase with respect to time.
 
 
+Visual Indicators: 
+
+The cyan arrow shows the rotor magnet's B-field direction.
+The orange arrow shows the net stator B-field direction.
+The yellow arrow shows the net current/electric field direction in the active windings.
+The magenta ring's radius represents the magnitude of the torque.
+
+
 User Controls:
 
 Sliders:
 
+Magnet Strength (Gauss)- Adjusts the strength of the rotor's magnetic field from 0G to 167.8G. A stronger magnet increases both the torque produced for a given current and the back-EMF induced at a given speed.
+
 Battery Voltage (V)- Allows the user to adjust the battery voltage from 6.94V-51.6V. Higher voltages allows for more current in each coil, which affects the force and torque generation of the motor.
 
-Turns per coil (turns/coil)- Allows the user to adjust the number of turns on the coil from 1-15. More coils leads to a longer wire length per solenoid, which increases the amount of back EMF and reduces the proportionally.
+Turns per coil (turns/coil)- Allows the user to adjust the number of turns on the coil from 5-15. More turns lead to a longer wire length per solenoid, which increases the amount of back EMF and reduces the current proportionally.
 
-Relative Core Permeability (scalar multiple of µ_0)- The Core Permeability affects the strength of the B-field generated by the stator coils, and it affects the perceived strength of the rotor B-field acting on the windings.
+Relative Core Permeability (µ/µ_0)- The core permeability affects the strength of the B-field generated by the stator coils, and it affects the perceived strength of the rotor B-field acting on the windings.
 
-Magnet Mass (kg)- Allows the user to adjust the mass of the cylindrical magent. An increase in magnet mass increases the inertia of the rotor, which dampens/ smoothens angular acceleration (reduces the size of angular acceleration fluctuations).
+Magnet Mass (kg)- Allows the user to adjust the mass of the cylindrical magnet. An increase in magnet mass increases the inertia of the rotor, which dampens/ smoothens angular acceleration (reduces the size of angular acceleration fluctuations).
 
 Buttons:
 
 Reset Button - Reset the time of the simulation to time = 0 seconds. It also clears the graph, resets the diagram,and resets the simulation sliders and input to default values.
 
-Toggles Axes - Toggles the visibility of the X, Y, and Z axis arrows on the diagr
-
+Toggles Axes - Toggles the visibility of the X, Y, and Z axis arrows on the diagram.
