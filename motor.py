@@ -199,7 +199,7 @@ def changeMagnetStrength(evt):
     magnetBField = evt.value
     # lastBField = [magnetBField*cos(theta+pi/2-0),
     #          magnetBField*cos(theta+pi/2-pi_2_3),
-    #          magnetBField*cos(theta+pi/2-2*pi_2_3)]
+    #          magnetBField*cos(theta+pi/2-2*pi_2_3)
     for i in range(len(winding)):
         lastBField[i] =dot(getMagnetBField(),winding[i].axis)
 canva.append_to_caption(' Magnet Strength (0G-167.8G): ') 
@@ -217,7 +217,7 @@ canva.append_to_caption('')
 # ====================== UPDATE FUNCTIONS ======================
 def updatePhaseResistance(evt=None):
     global phaseRs
-    turns_per_coil = turns_slider.value
+    turns_per_coil = winding[0].coils
     
     coil_radius = winding[0].radius * SCALE
     # coil_radius = winding[0].size.y
@@ -232,6 +232,7 @@ def updateInertia(evt=None):
     global inertia
     rotor_radius = 3.5 * SCALE
     inertia = 0.5 * magnetMass * (rotor_radius ** 2)
+    # print(inertia)
 ##=========================================================
 #permanent magnet (rotating cylinder in the center)
 magnetSweep = [ vec(0, 0, temp_v1), vec(0, 0,temp_v1-motor_length) ]
@@ -301,47 +302,41 @@ t_curve=gcurve(color=color.magenta, size= dotSize,graph=g_t)
 # THE PHYSICS  AND LOGIC BEHIND THIS
 def getMagnetBField():
     global theta, magnetBField
-    return magnetBField * corePermeability * vec(cos(theta+pi/2), sin(theta+pi/2), 0) #returns vector
+    return magnetBField *  corePermeability * vec(cos(theta+pi/2), sin(theta+pi/2), 0) #returns vector
 
 def calculatePhaseBField():
     global phaseBfields
 
 def calculateBackEMFS():
-    global phaseBEMF #in volts
-    #the componentof magnet's b field in each direction is
+    global phaseBEMF, lastBField #in volts
+    #the component of magnet's b field in each direction is
     #b field of a,b,c: sin(theta+pi), sin(theta+pi/3), sin(theta-pi/3)
     #db/dt a,b,c: cos(theta+pi), cos(theta+pi/3), cos(theta-pi/3)
     #V= -N dφ/dt
     #V= -N[d(BA)/dt]
-    #V= -N(pi*l*w)[dB/dt] for an ellipse cross-section
+    #V= -NA[dB/dt] for cross-section
 
     #flux = B·A
     #flux = B A cos(theta-theta_i)
     #emf = -N d_flux/dt
     #emf = N B A w sin(theta-theta_i)
-    sol=winding[0]
-    t=[0,0,0]
     for i in range(len(winding)):
-        coil_area = pi * (winding[i].radius*SCALE)**2
+        # coil_angle = pi_2_3 * i
+        # B = mag(getMagnetBField())
 
-        coil_angle = pi_2_3 * i
-        B = mag(getMagnetBField())
+        # phaseBEMF[i] = winding[i].coils * B * coil_area * omega * sin(theta - coil_angle)
 
-        phaseBEMF[i] = winding[i].coils * B * coil_area * omega * sin(theta - coil_angle)
-
-        # newBfield =dot(getMagnetBField(),winding[i].axis) * corePermeability
-        # dφ_dt = (newBfield - lastBField[i])/dt
+        newBfield =dot(getMagnetBField(),winding[i].axis)
+        dφ_dt = (newBfield - lastBField[i])/dt
         # print("\n" + str(newBfield) + " new")
         # print(str(lastBField[i]) + " old")
-        # print("difference:")
+        # print("difference/dt:")
         # print(dφ_dt)
-        # t[i]=dφ_dt
         #more bemf pointing towards the center = -d_phi/dt
         #more bemf pointing away from center = +d_phi/dt
-        # phaseBEMF[i]= -sol.coils *sol.size.z*sol.size.y*dφ_dt
-        # coil_area = pi * (winding[i].radius*SCALE)**2  # actual coil cross section, scaled units down
-        # phaseBEMF[i] = -sol.coils * coil_area * dφ_dt
-        # lastBField[i] = newBfield
+        coil_area = pi * (winding[i].radius*SCALE)**2  # actual coil cross section, scaled units down
+        phaseBEMF[i] = -winding[i].coils * coil_area * dφ_dt
+        lastBField[i] = newBfield
     
 def applyPhaseCurrents(phase_arr):
     global phases, phaseBEMF,phases
@@ -423,10 +418,10 @@ def calculateTorque():
         torque += dot(tau, vec(0, 0, 1)) # z-axis
     return torque
     
-updatePhaseResistance()
-updateInertia()
 while(1):
     rate(.5/dt)
+    updatePhaseResistance()
+    updateInertia()
     calculateBackEMFS()
     getNewStep()
     torque = calculateTorque()
