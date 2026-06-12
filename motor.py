@@ -96,6 +96,7 @@ def showOrigin (evt):
 def reset(evt):
     global t, theta, omega
     global g_t, g_v, g_a, g_i, g_bemf
+    global phases, phaseBEMF, lastBField
     a_curve.data = []
     v_curve.data = []
     t_curve.data = []
@@ -105,6 +106,10 @@ def reset(evt):
     t = 0
     theta = 0
     omega = 0
+
+    phases = [0,0,0]
+    phaseBEMF = [0,0,0]
+    lastBField = [0,0,0]
 
     g_t.xmin = 0
     g_t.xmax = 6
@@ -132,6 +137,18 @@ def reset(evt):
     changeBatteryV(battery_slider)
     changeMagnetStrength(magnet_slider)
     changeMagnetMass(mass_slider)
+
+    B_arrow.pos = vector(0, 3.5, 0)
+    B_arrow.axis = vector(0, 2, 0)
+
+    stator_B_arrow.pos = vector(0, 0, 3)
+    stator_B_arrow.axis = vector(-3, -1.5, 0)
+
+    E_arrow.pos=vector(0,0,3)
+    E_arrow.axis=vector(-1.5, 3, 0)
+
+    torque_ring.pos=vector(0, 0, 5)
+    torque_ring.axis=vector(0, 0, 1)
 
 def keyReset(evt):
     if evt.key == 'r':
@@ -224,7 +241,6 @@ northPole = extrusion( shape=north_disk, path=magnetSweep, color= color.red, opa
 south_disk= shapes.circle(radius= 3.5, np= 22, scale =1, angle1=pi, angle2 = 2*pi)
 southPole = extrusion( shape=south_disk, path=magnetSweep,color= color.blue , twosided=True)
 magnet = compound([northPole, southPole], axis = vec(1,0,0))
-
         
 # Magnetic field arrow from magnet
 B_arrow = arrow(pos=vector(0, 3.5, 0), axis=vector(0, 2, 0),
@@ -237,11 +253,11 @@ E_arrow = arrow(pos=vector(0,0,3), axis=vector(-1.5, 3, 0),
 # Torque vector on the magnet
 # torque_arrow = arrow(pos=vector(0,0,0), axis=vector(0, 0, 5),
 #                      shaftwidth=0.1, color=color.magenta)
-torque_ring = ring(pos=vec(0, 0, 5), axis=vec(0, 0, 1), 
+torque_ring = ring(pos=vector(0, 0, 5), axis=vector(0, 0, 1), 
                    radius=1, thickness=0.05, color=color.magenta)
 
 def rotatekTheta(phi):
-        magnet.rotate(angle=phi, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
+        magnet.rotate(angle=phi, origin=vector(0, 0, 0), axis = vector(0, 0, 1))
 # # ================PLAYING IWTH GRAPHS======================
 dotSize=2
 
