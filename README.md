@@ -10,16 +10,17 @@ A DC motor uses magnetic forces between a current carrying solenoid and a magnet
 However, this is a simulation of a brushless DC motor with a 6 block commutation algorithm. This motor contains a cylindrical magnet (rotor) in the center surrounded by three stator solenoids (aka windings/phases), where the commutation is done electrically. In a motor, the maximum torque is generated when the magnetic fields of the rotor and stator are orthogonal. 6 step commutation mimics that by turning on phases (or sending currents through phases) such that the net B field is orthogonal to the rotor's B field.
     To do that, one hall sensor is place physically in the midpoint of each phase (labeled hall sensor 1, 2, and 3 counterclockwise, which corresponds to index 0, 1, and 2). A hall sensor will report a value of 1 when it is facing the north pole of the rotor magnet, and 0 at the south pole.
     
-    This yields use combinations:
+    This yields the following combinations. 
+      Assuming that position theta (not the same one in the code) of 0 degrees corresponds to the angle at +x. At t=0, the B-field is at 90 degrees. This gives us all the sensor possible combinations, which correspond to the magnet B-Field being at the positions:
+    Hall sensor combination          ==>          B-Field Angle position
+    [1, 0, 1]                                   ==>              (-30, 30) (Sector 0)
+    [1, 0, 0]                                   ==>              (30, 90) (Sector 1)
+    [1, 1, 0]                                   ==>              (90, 150) (Sector 2)
+    [0, 1, 0]                                   ==>              (150, 210) (Sector 3)
+    [0, 1, 1]                                   ==>              (210, 270) (Sector 4)
+    [0, 0, 1]                                   ==>             (270, 330) (Sector 5)
     
-    [1, 0, 1]
-    [1, 0, 0]
-    [1, 1, 0]
-    [0, 1, 0]
-    [0, 1, 1]
-    [0, 0, 1]
-    Assuming that any angle (not the same one in the code) is 0degrees at +x, at t=0; the b field is at 90 degrees the sensors correspond the the magnet
-
+    We can model the current in each phase on a 2d plane using a3 axis graph,w here each axis is 120 degrees apart from each other
 
     
 

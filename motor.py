@@ -23,13 +23,13 @@ batteryV =6.94
 s_length = 200
 
 t=0
-dt=1/500
+dt=1/400
 theta=0
 dtheta= 1*2*pi
 
 omega = 0 # angular vel
 inertia = 1  # moment of inertia
-damping = 0.00005 # friction coefficient
+damping = 0.0001 # friction coefficient
 
 corePermeability = 1
 magnetBField = 0
@@ -200,6 +200,10 @@ def changeMagnetStrength(evt):
     # lastBField = [magnetBField*cos(theta+pi/2-0),
     #          magnetBField*cos(theta+pi/2-pi_2_3),
     #          magnetBField*cos(theta+pi/2-2*pi_2_3)
+    if (magnetBField == 0):
+        B_arrow.opacity=0
+    else:
+        B_arrow.opacity=1
     for i in range(len(winding)):
         lastBField[i] =dot(getMagnetBField(),winding[i].axis)
 canva.append_to_caption(' Magnet Strength (0G-167.8G): ') 
@@ -210,8 +214,8 @@ def changeMagnetMass(evt):
     global magnetMass
     magnetMass = evt.value
     updateInertia()
-canva.append_to_caption('\n\n Magnet Mass (.1796kg-1.18kg): ') 
-mass_slider = slider(bind=changeMagnetMass, min=.1796, max=1.18, step=.1, value=0.1, length=s_length)
+canva.append_to_caption('\n\n Magnet Mass (1.796kg-11.8kg): ') 
+mass_slider = slider(bind=changeMagnetMass, min=1.796, max=11.8, step=.1, value=0.1, length=s_length)
 canva.append_to_caption('') 
 
 # ====================== UPDATE FUNCTIONS ======================
@@ -245,7 +249,7 @@ magnet = compound([northPole, southPole], axis = vec(1,0,0))
         
 # Magnetic field arrow from magnet
 B_arrow = arrow(pos=vector(0, 3.5, 0), axis=vector(0, 2, 0),
-                shaftwidth=0.2, color=color.cyan)
+                shaftwidth=0.2, color=color.cyan, opacity=0)
 stator_B_arrow = arrow(pos=vector(0, 0, 3), axis=vector(-3, -1.5, 0),
                 shaftwidth=0.2, color=color.orange)
 # Electric field / current direction arrow
@@ -263,23 +267,26 @@ def rotatekTheta(phi):
 dotSize=2
 
 # canva.append_to_caption(' \n') 
-g_v = graph(width=750, height=250, xtitle=("Time (seconds)"), ytitle=("Angular Vel. (Radians / s)"), align='left', scroll =True, xmin =0, xmax =3)
+g_v = graph(width=1000, height=250, xtitle=("Time (seconds)"), ytitle=("Angular Vel. (Radians / s)"), align='left', scroll =True, xmin =0, xmax =.8)
 v_curve=gcurve(color=color.cyan, size= dotSize,graph=g_v)
 
 # canva.append_to_caption(' ') 
-g_a = graph(width=750, height=250, xtitle=("Time (seconds)"), ytitle=("Angular Accel. (Radians / s^2)"), align='left', scroll =True, xmin =0, xmax =3)
+g_a = graph(width=1000, height=250, xtitle=("Time (seconds)"), ytitle=("Angular Accel. (Radians / s^2)"), align='left', scroll =True, xmin =0, xmax =.8)
 a_curve=gcurve(color=color.green, size= dotSize,graph=g_a)
 
 # canva.append_to_caption(' \n') 
-g_bemf = graph(width=1000, height=250, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V)"), align='left',scroll =True, xmin =0, xmax = 4)
+g_bemf = graph(width=1000, height=250, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V)"), align='left',scroll =True, xmin =0, xmax = .8)
 # g_bemf = graph(width=800, height=200, xtitle=("Time (seconds)"), ytitle=("Induced Back-EMF (V))"), align='none',scroll =True, xmin =0, xmax = 5, ymin = -10,  ymax = 10)
 phaseBEMFCurves = [None, None, None]
-phaseBEMFCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_bemf)
-phaseBEMFCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_bemf)
-phaseBEMFCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_bemf)
+phaseBEMFCurves[0]  =gcurve(color=color.red, size= dotSize,graph=g_bemf)
+phaseBEMFCurves[1]  =gcurve(color=color.cyan, size= dotSize,graph=g_bemf)
+phaseBEMFCurves[2]  =gcurve(color=color.blue, size= dotSize,graph=g_bemf)
+# phaseBEMFCurves[0]  =gdots(color=color.red, size= dotSize,graph=g_bemf)
+# phaseBEMFCurves[1]  =gdots(color=color.cyan, size= dotSize,graph=g_bemf)
+# phaseBEMFCurves[2]  =gdots(color=color.blue, size= dotSize,graph=g_bemf)
 
 # canva.append_to_caption(' ') 
-g_i = graph(width=1000, height=250, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='left',scroll =True, xmin =0, xmax = 4)
+g_i = graph(width=1000, height=250, xtitle=("Time (seconds)"), ytitle=("Current (A)"), align='left',scroll =True, xmin =0, xmax = .8)
 iCurves = [None, None, None]
 iCurves[0]  =gcurve(color=color.red, size= dotSize,graph=g_i)
 iCurves[1]  =gcurve(color=color.cyan, size= dotSize,graph=g_i)
@@ -409,9 +416,9 @@ def calculateTorque():
         coil_area = pi * (winding[i].radius * SCALE)**2
         
         # stator coil dipole moment: mu = N I A (direction = coil axis)
-        N = winding[i].coils
+        Num = winding[i].coils
         I = phases[i]
-        mu = N * I * coil_area * coil_axis
+        mu = Num * I * coil_area * coil_axis
         
         # torque on this coil's dipole in magnet field
         tau = cross(mu, B_magnet)
