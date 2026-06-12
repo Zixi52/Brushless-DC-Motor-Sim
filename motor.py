@@ -71,10 +71,6 @@ for i in range(len(core)):
     winding[i]=helix(pos=v, axis=hat(v2), 
                   radius=3, coils=8, thickness=0.2, color=color.orange,
                   thicknesses=0.01, size =vec(2,core[i].width*1.2,core[i].width*1.2)) #solenoid length, width (from top view), depth 
-def changeNumberCoils(evt):
-    # print(evt)
-    for i in range(len(winding)):
-        winding[i].coils = evt.value
      
 # CREATE XYZ ORIGIN AXIS 
 originAxes = [
@@ -97,22 +93,54 @@ def showOrigin (evt):
             originLabels[i].opacity=1.0
         clrbtn.text = 'axes on'
 ##=============================ALL USER INPUTS============================
-def resetTimer(evt):
-    global theta
-    if evt.key == 'r':
-        a_curve.data = []
-        v_curve.data = []
-        t_curve.data = []
-        for curve in iCurves + phaseBEMFCurves:
-            curve.data = []
-        global t, theta, omega
-        t = 0
-        theta = 0
-        omega = 0
-        rotatekTheta(-theta)
+def reset(evt):
+    global t, theta, omega
+    global g_t, g_v, g_a, g_i, g_bemf
+    a_curve.data = []
+    v_curve.data = []
+    t_curve.data = []
+    for curve in iCurves + phaseBEMFCurves:
+        curve.data = []
+    rotatekTheta(-theta)
+    t = 0
+    theta = 0
+    omega = 0
 
-canva.bind('keydown', resetTimer)
+    g_t.xmin = 0
+    g_t.xmax = 6
+
+    g_v.xmin = 0
+    g_v.xmax = 3
+
+    g_a.xmin = 0
+    g_a.xmax = 3
+
+    g_i.xmin = 0
+    g_i.xmax = 4
+
+    g_bemf.xmin = 0
+    g_bemf.xmax = 4
+
+    turns_slider.value = 8
+    core_slider.value = 1
+    battery_slider.value = 6.94
+    magnet_slider.value = 0
+    mass_slider.value = 0.1796
+
+    changeNumberCoils(turns_slider)
+    changeCorePermeability(core_slider)
+    changeBatteryV(battery_slider)
+    changeMagnetStrength(magnet_slider)
+    changeMagnetMass(mass_slider)
+
+def keyReset(evt):
+    if evt.key == 'r':
+        reset(None)
+
+canva.bind('keydown', keyReset)
 canva.append_to_caption(' PRESS R TO RESTART SIMULATION YAY  ') 
+reset_button = button(text='Reset Simulation', bind=reset)
+canva.append_to_caption('   ') 
 
 # def timeFreeze(evt):
 #     if evt.key == 't':
@@ -121,18 +149,18 @@ canva.append_to_caption(' PRESS R TO RESTART SIMULATION YAY  ')
 # canva.append_to_caption(' PRESS t so thanos pauses/unpuases time  ') 
     
 clrbtn = button(bind=showOrigin, text='axes on')
-canva.append_to_caption('   ') 
-setDefaultView_b = button(bind=setDefaultView, text=' Reset View')
-
-canva.append_to_caption('\n\n  Turns per Coil (5-15 turns):') 
-turns_slider = slider(bind=changeNumberCoils, 
-                      max=15, min=5, step=1, value=8, 
-                      length=s_length)
+# canva.append_to_caption('   ') 
+# setDefaultView_b = button(bind=setDefaultView, text=' Reset View')
 
 def changeNumberCoils(evt):
     for i in range(len(winding)):
         winding[i].coils = evt.value
     updatePhaseResistance()
+
+canva.append_to_caption('\n\n  Turns per Coil (5-15 turns):') 
+turns_slider = slider(bind=changeNumberCoils, 
+                      max=15, min=5, step=1, value=8, 
+                      length=s_length)
 
 def changeCorePermeability(evt):
     global corePermeability
@@ -145,8 +173,6 @@ core_slider = slider(bind=changeCorePermeability, min=0.1, max=10, step=0.1, val
 def changeBatteryV(evt):
     global batteryV
     batteryV = evt.value
-    g_bemf.ymin= -10.12 * batteryV
-    g_bemf.ymax= 10.12 * batteryV
 canva.append_to_caption('\n\n Battery Voltage (6.94V-51.6V): ') 
 battery_slider = slider(bind=changeBatteryV, min=6.94, max=27, step=1, value=6.94, length=s_length)
 canva.append_to_caption('') 
