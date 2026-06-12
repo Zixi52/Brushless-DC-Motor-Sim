@@ -31,7 +31,7 @@ omega = 0 # angular vel
 inertia = 1  # moment of inertia
 damping = 0.00005 # friction coefficient
 
-corePermeability = 0
+corePermeability = 1
 magnetBField = 0
 magnetMass = 0.1
 
@@ -136,11 +136,11 @@ def changeNumberCoils(evt):
 
 def changeCorePermeability(evt):
     global corePermeability
-    corePermeability = 1 - evt.value / core_slider.max
+    corePermeability = evt.value
     for i in range(len(core)):
-        core[i].color = color.gray(corePermeability)
-canva.append_to_caption('Core Permeability/µ_0 (1-5414 H/m): ') 
-core_slider = slider(bind=changeCorePermeability, min=1, max=5414, step=1, value=2, length=s_length)
+        core[i].color = color.gray(corePermeability / core_slider.max)
+canva.append_to_caption('Core Permeability/µ_0 (0.1-10): ') 
+core_slider = slider(bind=changeCorePermeability, min=0.1, max=10, step=0.1, value=1, length=s_length)
 
 def changeBatteryV(evt):
     global batteryV
@@ -200,25 +200,24 @@ southPole = extrusion( shape=south_disk, path=magnetSweep,color= color.blue , tw
 magnet = compound([northPole, southPole], axis = vec(1,0,0))
 
         
-# Magnetic field arrow through a coil
-B_arrow = arrow(pos=vector(3.5, 0, 0), axis=vector(0, 2, 0),
+# Magnetic field arrow from magnet
+B_arrow = arrow(pos=vector(0, 3.5, 0), axis=vector(0, 2, 0),
                 shaftwidth=0.2, color=color.cyan)
+stator_B_arrow = arrow(pos=vector(0, 0, 3), axis=vector(-3, -1.5, 0),
+                shaftwidth=0.2, color=color.orange)
 # Electric field / current direction arrow
-E_arrow = arrow(pos=vector(0,0,0), axis=vector(-5, 0, 0),
-                shaftwidth=0.1, color=color.yellow)
+E_arrow = arrow(pos=vector(0,0,3), axis=vector(-1.5, 3, 0),
+                shaftwidth=0.2, color=color.yellow)
 # Torque vector on the magnet
 # torque_arrow = arrow(pos=vector(0,0,0), axis=vector(0, 0, 5),
 #                      shaftwidth=0.1, color=color.magenta)
-torque_ring = ring(pos=vec(0, 0, 3), axis=vec(0, 0, 1), 
+torque_ring = ring(pos=vec(0, 0, 5), axis=vec(0, 0, 1), 
                    radius=1, thickness=0.05, color=color.magenta)
 
 def rotatekTheta(phi):
         magnet.rotate(angle=phi, origin=vec(0, 0, 0), axis = vec(0, 0, 1))
 # # ================PLAYING IWTH GRAPHS======================
-dotSize=2   
-canva.append_to_caption('\n ================================================================= \n Legend : Phase A in RED, Phase B in CYAN, Phase C in BLUE') 
-g_t = graph(width=750, height=300, xtitle=("Angle (Radians)"), ytitle=("Torque (N*m)"), align='left', scroll =True, xmin =0, xmax=6)
-t_curve=gcurve(color=color.magenta, size= dotSize,graph=g_t)
+dotSize=2
 
 # canva.append_to_caption(' \n') 
 g_v = graph(width=750, height=250, xtitle=("Time (seconds)"), ytitle=("Angular Vel. (Radians / s)"), align='left', scroll =True, xmin =0, xmax =3)
@@ -242,6 +241,20 @@ iCurves = [None, None, None]
 iCurves[0]  =gcurve(color=color.red, size= dotSize,graph=g_i)
 iCurves[1]  =gcurve(color=color.cyan, size= dotSize,graph=g_i)
 iCurves[2]  =gcurve(color=color.blue, size= dotSize,graph=g_i)
+canva.append_to_caption('<br/>')
+canva.append_to_caption('\n ================================================================= \n')
+canva.append_to_caption('<br/>')
+canva.append_to_caption('<span style="color:cyan;">■</span> Rotor magnet B-field direction&nbsp;&nbsp;&nbsp;')
+canva.append_to_caption('<span style="color:orange;">■</span> Net stator B-field direction&nbsp;&nbsp;&nbsp;')
+canva.append_to_caption('<br/><br/>')
+canva.append_to_caption('<span style="color:yellow;">■</span> Net current direction (electric field)&nbsp;&nbsp;&nbsp;')
+canva.append_to_caption('<span style="color:magenta;">■</span> Torque (magenta=CCW, red=CW), ring radius = magnitude')
+canva.append_to_caption('<br/><br/>')
+
+canva.append_to_caption('\n Induced Back EMF Legend : Phase A in RED, Phase B in CYAN, Phase C in BLUE') 
+canva.append_to_caption('<br/><br/>')
+g_t = graph(width=750, height=300, xtitle=("Angle (Radians)"), ytitle=("Torque (N*m)"), align='left', scroll =True, xmin =0, xmax=6)
+t_curve=gcurve(color=color.magenta, size= dotSize,graph=g_t)
 
 # THE PHYSICS  AND LOGIC BEHIND THIS
 def getMagnetBField():
@@ -264,7 +277,7 @@ def calculateBackEMFS():
     sol=winding[0]
     t=[0,0,0]
     for i in range(len(winding)):
-        newBfield =dot(getMagnetBField(),winding[i].axis)
+        newBfield =dot(getMagnetBField(),winding[i].axis) * corePermeability
         dφ_dt = (newBfield - lastBField[i])/dt
         # print("\n" + str(newBfield) + " new")
         # print(str(lastBField[i]) + " old")
@@ -349,7 +362,7 @@ def calculateTorque():
         # stator coil dipole moment: mu = N I A (direction = coil axis)
         N = winding[i].coils
         I = phases[i]
-        mu = N * I * coil_area * coil_axis
+        mu = N * I * coil_area * coil_axis * corePermeability
         
         # torque on this coil's dipole in magnet field
         tau = cross(mu, B_magnet)
@@ -377,19 +390,31 @@ while(1):
     iCurves[1].plot(t, phases[1])
     iCurves[2].plot(t, phases[2])
     # update visual arrows
-    B = getMagnetBField()
-    if mag(B) > 0:
-        B_arrow.pos = 3.5 * hat(B) # sits on rotor surface pointing outward
-        B_arrow.axis = hat(B) * 3  # points in field direction
 
-    # net stator current direction: weighted sum of active phase directions
+    # magnet field arrow
+    B_magnet = getMagnetBField()
+    if mag(B_magnet) > 0:
+        B_arrow.pos = 3.5 * hat(B_magnet) + vec(0, 0, temp_v1)
+        B_arrow.axis = hat(B_magnet) * 3
+
     statorDir = vec(0, 0, 0)
     for i in range(3):
         coil_angle = pi_2_3 * i
-        statorDir += phases[i] * vec(cos(coil_angle+pi/2), sin(coil_angle+pi), 0)
+        statorDir += phases[i] * vec(cos(coil_angle+pi), sin(coil_angle+pi), 0)
     if mag(statorDir) > 0:
+        stator_B_arrow.pos = vec(0, 0, 0)
+        stator_B_arrow.axis = hat(statorDir) * 3 # points in net magnetic direction from coils
+
+    # net stator current direction: weighted sum of active phase directions
+    netCurrentDir = vec(0, 0, 0)
+    for i in range(3):
+        coil_angle = pi_2_3 * i
+        radial = vec(cos(coil_angle), sin(coil_angle), 0)
+        tangent = cross(vec(0,0,1), radial)
+        netCurrentDir += phases[i] * tangent
+    if mag(netCurrentDir) > 0:
         E_arrow.pos = vec(0, 0, 0)
-        E_arrow.axis = hat(statorDir) * 3 # points in net current direction
+        E_arrow.axis = hat(netCurrentDir) * 3 # points in net current direction
 
     # torque arrow along z axis
     torque_ring.radius = abs(torque) * 500 # random scale
