@@ -285,26 +285,36 @@ t_curve=gcurve(color=color.magenta, size= dotSize,graph=g_t)
 # THE PHYSICS  AND LOGIC BEHIND THIS
 def getMagnetBField():
     global theta, magnetBField
-    return magnetBField * vec(cos(theta+pi/2), sin(theta+pi/2), 0) #returns vector
+    return magnetBField * corePermeability * vec(cos(theta+pi/2), sin(theta+pi/2), 0) #returns vector
 
 def calculatePhaseBField():
     global phaseBfields
 
 def calculateBackEMFS():
     global phaseBEMF #in volts
-    #the componentof magnet's b field in each direction is 
-    getMagnetBField()
-    global phaseBEMF, lastBField
-    #b field of a,b,c: sonion(theta+pi), sonion(theta+pi/3), sonion(theta-pi/3)
+    #the componentof magnet's b field in each direction is
+    #b field of a,b,c: sin(theta+pi), sin(theta+pi/3), sin(theta-pi/3)
     #db/dt a,b,c: cos(theta+pi), cos(theta+pi/3), cos(theta-pi/3)
     #V= -N dφ/dt
     #V= -N[d(BA)/dt]
     #V= -N(pi*l*w)[dB/dt] for an ellipse cross-section
+
+    #flux = B·A
+    #flux = B A cos(theta-theta_i)
+    #emf = -N d_flux/dt
+    #emf = N B A w sin(theta-theta_i)
     sol=winding[0]
     t=[0,0,0]
     for i in range(len(winding)):
-        newBfield =dot(getMagnetBField(),winding[i].axis) * corePermeability
-        dφ_dt = (newBfield - lastBField[i])/dt
+        coil_area = pi * (winding[i].radius*SCALE)**2
+
+        coil_angle = pi_2_3 * i
+        B = mag(getMagnetBField())
+
+        phaseBEMF[i] = winding[i].coils * B * coil_area * omega * sin(theta - coil_angle)
+
+        # newBfield =dot(getMagnetBField(),winding[i].axis) * corePermeability
+        # dφ_dt = (newBfield - lastBField[i])/dt
         # print("\n" + str(newBfield) + " new")
         # print(str(lastBField[i]) + " old")
         # print("difference:")
@@ -313,18 +323,12 @@ def calculateBackEMFS():
         #more bemf pointing towards the center = -d_phi/dt
         #more bemf pointing away from center = +d_phi/dt
         # phaseBEMF[i]= -sol.coils *sol.size.z*sol.size.y*dφ_dt
-        coil_area = pi * (winding[i].radius*SCALE)**2  # actual coil cross section, scaled units down
-        phaseBEMF[i] = -sol.coils * coil_area * dφ_dt
-        lastBField[i] = newBfield
+        # coil_area = pi * (winding[i].radius*SCALE)**2  # actual coil cross section, scaled units down
+        # phaseBEMF[i] = -sol.coils * coil_area * dφ_dt
+        # lastBField[i] = newBfield
     
 def applyPhaseCurrents(phase_arr):
     global phases, phaseBEMF,phases
-    netBEMF = 0
-    for i in range(3):
-        if(phase_arr[i] != 0):
-            netBEMF += abs(phaseBEMF[i])
-            #print(str(phaseBEMF[i]) + ", " + str(i))
-    # print("netBemf/batteryV + \n")
     # print(netBEMF/batteryV)
     for i in range(3):
         if phase_arr[i] == 0:
@@ -332,7 +336,15 @@ def applyPhaseCurrents(phase_arr):
             winding[i].color=color.orange
         else:
             # fixed formula to add bemfs
-            phases[i] = phase_arr[i] * (batteryV - netBEMF) / (2*phaseRs[i])
+            # per-phase back EMF
+            Ei = phaseBEMF[i]
+
+            # KVL per phase: V = IR + E
+            Ii = (batteryV - Ei) / phaseRs[i]
+
+            # apply direction from commutation
+            phases[i] = phase_arr[i] * Ii
+
             #bfield increasing towards the center = +
             # phases[i] = phase_arr[i] * (batteryV) / phaseRs[i]
             if phase_arr[i] == -1:
@@ -374,8 +386,8 @@ def getNewStep():
     elif (hall_sensors == [0,0,1]):
         applyPhaseCurrents([-1, 0, 1])
         #CH AL
-    else:
-        print("unhandled hall state:", hall_sensors)
+    # else:
+    #     print("unhandled hall state:", hall_sensors)
  
 def calculateTorque():
     B_magnet = getMagnetBField()  # field at stator coils
@@ -388,7 +400,7 @@ def calculateTorque():
         # stator coil dipole moment: mu = N I A (direction = coil axis)
         N = winding[i].coils
         I = phases[i]
-        mu = N * I * coil_area * coil_axis * corePermeability
+        mu = N * I * coil_area * coil_axis
         
         # torque on this coil's dipole in magnet field
         tau = cross(mu, B_magnet)
