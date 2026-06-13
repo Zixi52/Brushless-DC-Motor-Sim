@@ -348,27 +348,53 @@ def calculateBackEMFS():
 def applyPhaseCurrents(phase_arr):
     global phases, phaseBEMF,phases
     # print(netBEMF/batteryV)
+    hi = None
+    lo = None
     for i in range(3):
-        if phase_arr[i] == 0:
-            phases[i] = 0
-            winding[i].color=color.orange
+        if phase_arr[i] == 1:
+            hi = i
+        elif phase_arr[i] == -1:
+            lo = i
+    E = phaseBEMF[hi] - phaseBEMF[lo]
+    R = phaseRs[hi] + phaseRs[lo]
+
+    I = (batteryV - E) / R
+
+    phases[hi] = I
+    phases[lo] = -I
+    phases[3-hi-lo] = 0
+
+    for i in range(3):
+        if phase_arr[i] == -1:
+            winding[i].color=color.red
+        elif phase_arr[i] == 1:
+            winding[i].color=color.green
         else:
-            # fixed formula to add bemfs
-            # per-phase back EMF
-            Ei = phaseBEMF[i]
+            winding[i].color=color.orange
 
-            # KVL per phase: V = IR + E
-            Ii = (batteryV - Ei) / phaseRs[i]
 
-            # apply direction from commutation
-            phases[i] = phase_arr[i] * Ii
+    
+    # for i in range(3):
+    #     if phase_arr[i] == 0:
+    #         phases[i] = 0
+    #         winding[i].color=color.orange
+    #     else:
+    #         # fixed formula to add bemfs
+    #         # per-phase back EMF
+    #         Ei = phaseBEMF[i]
 
-            #bfield increasing towards the center = +
-            # phases[i] = phase_arr[i] * (batteryV) / phaseRs[i]
-            if phase_arr[i] == -1:
-                winding[i].color=color.red
-            else:
-                winding[i].color=color.green
+    #         # KVL per phase: V = IR + E
+    #         Ii = (batteryV - Ei) / phaseRs[i]
+
+    #         # apply direction from commutation
+    #         phases[i] = phase_arr[i] * Ii
+
+    #         #bfield increasing towards the center = +
+    #         # phases[i] = phase_arr[i] * (batteryV) / phaseRs[i]
+    #         if phase_arr[i] == -1:
+    #             winding[i].color=color.red
+    #         else:
+    #             winding[i].color=color.green
 
 # one represents north pole, including error margin to not glitch everything out
 def getHallSensors():
