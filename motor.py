@@ -47,7 +47,7 @@ wire_cross_section = 1e-8 # 0.01 mm^2
 
 timeStop = False
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
-canva = canvas(width=700, height=700, background=color.white, fov = 0.01, resizable=False, align = 'right') 
+canva = canvas(width=550, height=550, background=color.white, fov = 0.01, resizable=False, align = 'right') 
 def setDefaultView(evt):
     canva.forward = vector(0, 0, -1)
     canva.center = vector(0, 0, 1)
