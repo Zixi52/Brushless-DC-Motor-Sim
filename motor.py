@@ -33,7 +33,7 @@ damping = 0.0001 # friction coefficient
 
 corePermeability = 1
 magnetBField = 0
-magnetMass = 0.1
+magnetMass = 0.1796
 
 phases = [0, 0, 0] # Current in each phase A, B, C respectively, if i != 0 its on
 phaseRs = [2, 2, 2] # Resistance in each phase A, B, C respectively
@@ -42,7 +42,7 @@ phaseBEMF = [0, 0, 0] # Back EMFs induced in each phase
 lastBField= [0, 0, 0]#last stored value of the BField perpendicular to each phase
 
 wire_resistivity = 1.68e-8 # copper resistivity (ohm*m)
-wire_cross_section = 1e-8 # 0.01 mm^2
+wire_cross_section = 1e-8 # 0.1 mm^2
 
 timeStop = False
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
@@ -126,7 +126,7 @@ def reset(evt):
     g_bemf.xmin = 0
     g_bemf.xmax = 4
 
-    turns_slider.value = 8
+    turns_slider.value = 15
     core_slider.value = 1
     battery_slider.value = 6.94
     magnet_slider.value = 0
@@ -174,9 +174,9 @@ def changeNumberCoils(evt):
         winding[i].coils = evt.value
     updatePhaseResistance()
 
-canva.append_to_caption('\n\n  Turns per Coil (5-15 turns):') 
+canva.append_to_caption('\n\n  Turns per Coil (10-30 turns):') 
 turns_slider = slider(bind=changeNumberCoils, 
-                      max=15, min=5, step=1, value=8, 
+                      max=30, min=10, step=1, value=15, 
                       length=s_length)
 
 def changeCorePermeability(evt):
@@ -190,7 +190,7 @@ core_slider = slider(bind=changeCorePermeability, min=0.1, max=10, step=0.1, val
 def changeBatteryV(evt):
     global batteryV
     batteryV = evt.value
-canva.append_to_caption('\n\n Battery Voltage (6.94V-51.6V): ') 
+canva.append_to_caption('\n\n Battery Voltage (6.94V-27V): ') 
 battery_slider = slider(bind=changeBatteryV, min=6.94, max=27, step=1, value=6.94, length=s_length)
 canva.append_to_caption('') 
 
@@ -206,16 +206,16 @@ def changeMagnetStrength(evt):
         B_arrow.opacity=1
     for i in range(len(winding)):
         lastBField[i] =dot(getMagnetBField(),winding[i].axis)
-canva.append_to_caption(' Magnet Strength (0G-167.8G): ') 
-magnet_slider = slider(bind=changeMagnetStrength, min=0, max=167.8/1e4, step=1/1e4, value=0, length=s_length)
+canva.append_to_caption(' Magnet Strength (0G-1678G): ') 
+magnet_slider = slider(bind=changeMagnetStrength, min=0, max=1678/1e4, step=1/1e4, value=0, length=s_length)
 canva.append_to_caption('') 
 
 def changeMagnetMass(evt):
     global magnetMass
     magnetMass = evt.value
     updateInertia()
-canva.append_to_caption('\n\n Magnet Mass (1.796kg-11.8kg): ') 
-mass_slider = slider(bind=changeMagnetMass, min=1.796, max=11.8, step=.1, value=0.1, length=s_length)
+canva.append_to_caption('\n\n Magnet Mass (0.1796kg-1.18kg): ') 
+mass_slider = slider(bind=changeMagnetMass, min=0.1796, max=1.18, step=.1, value=0.1796, length=s_length)
 canva.append_to_caption('') 
 
 # ====================== UPDATE FUNCTIONS ======================
@@ -309,7 +309,7 @@ t_curve=gcurve(color=color.magenta, size= dotSize,graph=g_t)
 # THE PHYSICS  AND LOGIC BEHIND THIS
 def getMagnetBField():
     global theta, magnetBField
-    return magnetBField *  corePermeability * vec(cos(theta+pi/2), sin(theta+pi/2), 0) #returns vector
+    return magnetBField * vec(cos(theta+pi/2), sin(theta+pi/2), 0) #returns vector
 
 def calculatePhaseBField():
     global phaseBfields
@@ -418,7 +418,7 @@ def calculateTorque():
         # stator coil dipole moment: mu = N I A (direction = coil axis)
         Num = winding[i].coils
         I = phases[i]
-        mu = Num * I * coil_area * coil_axis
+        mu = Num * I * coil_area * coil_axis * corePermeability
         
         # torque on this coil's dipole in magnet field
         tau = cross(mu, B_magnet)
