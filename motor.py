@@ -414,7 +414,6 @@ def calculateTorque():
     
 while(1):
     rate(.5/dt)
-    print
     updatePhaseResistance()
     updateInertia()
     calculateBackEMFS()
