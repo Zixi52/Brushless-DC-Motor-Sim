@@ -34,6 +34,7 @@ damping = 0.0005 # friction coefficient
 corePermeability = 1
 magnetBField = 0
 magnetMass = 0.1796
+rotor_radius = 3.5 #vpython unit
 
 phases = [0, 0, 0] # Current in each phase A, B, C respectively, if i != 0 its on
 phaseRs = [2, 2, 2] # Resistance in each phase A, B, C respectively
@@ -46,7 +47,7 @@ wire_cross_section = 1e-8 # 0.01 mm^2
 
 timeStop = False
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
-canva = canvas(width=500, height=500, background=color.white, fov = 0.01, resizable=False, align = 'right') 
+canva = canvas(width=700, height=700, background=color.white, fov = 0.01, resizable=False, align = 'right') 
 def setDefaultView(evt):
     canva.forward = vector(0, 0, -1)
     canva.center = vector(0, 0, 1)
@@ -69,7 +70,7 @@ for i in range(len(core)):
     v2=vector(cos(pi_2_3*i), sin(pi_2_3*i), 0)
     core[i] =box(pos= vec(v.x*1.3, v.y*1.3, v.z), length=3, height=2, width=motor_length*.5, color=color.gray(.7), axis = v2)
     winding[i]=helix(pos=v, axis=hat(v2), 
-                  radius=3, coils=8, thickness=0.2, color=color.orange,
+                  radius=3, coils=8, thickness=0.05, color=color.orange,
                   thicknesses=0.01, size =vec(2,core[i].width*1.2,core[i].width*1.2)) #solenoid length, width (from top view), depth 
      
 # CREATE XYZ ORIGIN AXIS 
@@ -138,7 +139,7 @@ def reset(evt):
     changeMagnetStrength(magnet_slider)
     changeMagnetMass(mass_slider)
 
-    B_arrow.pos = vector(0, 3.5, 0)
+    B_arrow.pos = vector(0, rotor_radius, 0)
     B_arrow.axis = vector(0, 2, 0)
 
     stator_B_arrow.pos = vector(0, 0, 3)
@@ -174,9 +175,9 @@ def changeNumberCoils(evt):
         winding[i].coils = evt.value
     updatePhaseResistance()
 
-canva.append_to_caption('\n\n  Turns per Coil (10-30 turns):') 
+canva.append_to_caption('\n\n  Turns per Coil (10-50 turns):') 
 turns_slider = slider(bind=changeNumberCoils, 
-                      max=30, min=10, step=1, value=15, 
+                      max=50, min=10, step=1, value=15, 
                       length=s_length)
 
 def changeCorePermeability(evt):
@@ -234,20 +235,19 @@ def updatePhaseResistance(evt=None):
 
 def updateInertia(evt=None):
     global inertia
-    rotor_radius = 3.5 * SCALE
-    inertia = 0.5 * magnetMass * (rotor_radius ** 2)
+    inertia = 0.5 * magnetMass * ((rotor_radius*SCALE) ** 2)
 ##=========================================================
 #permanent magnet (rotating cylinder in the center)
 magnetSweep = [ vec(0, 0, temp_v1), vec(0, 0,temp_v1-motor_length) ]
-north_disk= shapes.circle(radius= 3.5, np= 22, scale =1, angle1=0, angle2 = pi)
+north_disk= shapes.circle(radius= rotor_radius, np= 22, scale =1, angle1=0, angle2 = pi)
 northPole = extrusion( shape=north_disk, path=magnetSweep, color= color.red, opacity=1, twosided=True)
 
-south_disk= shapes.circle(radius= 3.5, np= 22, scale =1, angle1=pi, angle2 = 2*pi)
+south_disk= shapes.circle(radius= rotor_radius, np= 22, scale =1, angle1=pi, angle2 = 2*pi)
 southPole = extrusion( shape=south_disk, path=magnetSweep,color= color.blue , twosided=True)
 magnet = compound([northPole, southPole], axis = vec(1,0,0))
         
 # Magnetic field arrow from magnet
-B_arrow = arrow(pos=vector(0, 3.5, 0), axis=vector(0, 2, 0),
+B_arrow = arrow(pos=vector(0, rotor_radius, 0), axis=vector(0, 2, 0),
                 shaftwidth=0.2, color=color.cyan, opacity=0)
 stator_B_arrow = arrow(pos=vector(0, 0, 3), axis=vector(-3, -1.5, 0),
                 shaftwidth=0.2, color=color.orange)
@@ -414,13 +414,14 @@ def calculateTorque():
     
 while(1):
     rate(.5/dt)
+    print
     updatePhaseResistance()
     updateInertia()
     calculateBackEMFS()
     getNewStep()
     torque = calculateTorque()
-    # alpha = (torque ) / inertia
-    alpha = (torque - damping * omega) / inertia
+    
+    alpha = (torque-damping*omega) / inertia
     omega += alpha * dt
     theta += omega * dt
     rotatekTheta(omega * dt)
@@ -437,7 +438,7 @@ while(1):
     # magnet field arrow
     B_magnet = getMagnetBField()
     if mag(B_magnet) > 0:
-        B_arrow.pos = 3.5 * hat(B_magnet) + vec(0, 0, temp_v1)
+        B_arrow.pos = rotor_radius* hat(B_magnet) + vec(0, 0, temp_v1)
         B_arrow.axis = hat(B_magnet) * 3
 
     statorDir = vec(0, 0, 0)
