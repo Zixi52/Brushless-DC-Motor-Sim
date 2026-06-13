@@ -29,7 +29,7 @@ dtheta= 1*2*pi
 
 omega = 0 # angular vel
 inertia = 1  # moment of inertia
-damping = 0.0001 # friction coefficient
+damping = 0.005 # friction coefficient
 
 corePermeability = 1
 magnetBField = 0
@@ -236,7 +236,6 @@ def updateInertia(evt=None):
     global inertia
     rotor_radius = 3.5 * SCALE
     inertia = 0.5 * magnetMass * (rotor_radius ** 2)
-    # print(inertia)
 ##=========================================================
 #permanent magnet (rotating cylinder in the center)
 magnetSweep = [ vec(0, 0, temp_v1), vec(0, 0,temp_v1-motor_length) ]
@@ -246,6 +245,8 @@ northPole = extrusion( shape=north_disk, path=magnetSweep, color= color.red, opa
 south_disk= shapes.circle(radius= 3.5, np= 22, scale =1, angle1=pi, angle2 = 2*pi)
 southPole = extrusion( shape=south_disk, path=magnetSweep,color= color.blue , twosided=True)
 magnet = compound([northPole, southPole], axis = vec(1,0,0))
+        
+# inertia = 0.5 * magnetMass * ((north_disk.radius * SCALE) ** 2)#resetting intial variable value
         
 # Magnetic field arrow from magnet
 B_arrow = arrow(pos=vector(0, 3.5, 0), axis=vector(0, 2, 0),
@@ -335,36 +336,30 @@ def calculateBackEMFS():
 
         newBfield =dot(getMagnetBField(),winding[i].axis)
         dφ_dt = (newBfield - lastBField[i])/dt
-        # print("\n" + str(newBfield) + " new")
-        # print(str(lastBField[i]) + " old")
-        # print("difference/dt:")
-        # print(dφ_dt)
         #more bemf pointing towards the center = -d_phi/dt
         #more bemf pointing away from center = +d_phi/dt
         coil_area = pi * (winding[i].radius*SCALE)**2  # actual coil cross section, scaled units down
         phaseBEMF[i] = -winding[i].coils * coil_area * dφ_dt
         lastBField[i] = newBfield
     
-def applyPhaseCurrents(phase_arr):
+def applyPhaseCurrents(phase_arr): #phase arr shows which phase is on; binary
     global phases, phaseBEMF,phases
-    # print(netBEMF/batteryV)
-    hi = None
-    lo = None
+    netBemf=0;
     for i in range(3):
-        if phase_arr[i] == 1:
-            hi = i
-        elif phase_arr[i] == -1:
-            lo = i
-    E = phaseBEMF[hi] - phaseBEMF[lo]
-    R = phaseRs[hi] + phaseRs[lo]
-
-    I = (batteryV - E) / R
-
-    phases[hi] = I
-    phases[lo] = -I
-    phases[3-hi-lo] = 0
-
+        netBemf += phase_arr[i]*phaseBEMF[i]
+        
+    seriesCurrent = (batteryV-netBemf)/(2*phaseRs[0]) 
+    print(netBemf)
+    # for i in range(3):
+    #     if phase_arr[i] == 1:
+    #         hi = i
+    #     elif phase_arr[i] == -1:
+    #         lo = i
+    # E = phaseBEMF[hi] - phaseBEMF[lo]
+    # R = phaseRs[hi] + phaseRs[lo]
+    
     for i in range(3):
+        phases[i] = phase_arr[i] * seriesCurrent
         if phase_arr[i] == -1:
             winding[i].color=color.red
         elif phase_arr[i] == 1:
@@ -455,7 +450,6 @@ while(1):
     rate(.5/dt)
     updatePhaseResistance()
     updateInertia()
-    calculateBackEMFS()
     getNewStep()
     torque = calculateTorque()
     # alpha = (torque ) / inertia
@@ -463,6 +457,8 @@ while(1):
     omega += alpha * dt
     theta += omega * dt
     rotatekTheta(omega * dt)
+    
+    calculateBackEMFS()
     t_curve.plot(theta, torque)
     v_curve.plot(t, omega)
     a_curve.plot(t, alpha)
