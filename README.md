@@ -34,7 +34,7 @@ Overview:
 
     We then assign each phase to the voltages described according to this chart.
     
-    By cycling forward in the phases (Sector 1 -> 2-->3-->4-->5-->0), we get torque and angular acceleration in the +Z axis (counterclockwise) about the axis of the rotor, causing changes in angular velocity. As the rotor rotates, it will change its Sector (or block), and the commutation logic will shift and adjust to it so that we can get the most torque. Over time, the greater angular velocity will generate a higher back EMF (due to a high rate change in magnetic flux) on the connected inductors. This will reduce the effective current in each inductor, thus reducing the torque generate. This negative feedback loop, combined with the friction on the rotor (from spinning elements like bearings) will limit the motor's angular speed.
+    By cycling forward in the phases (Sector 1 -> 2-->3-->4-->5-->0), we get torque and angular acceleration in the +Z axis (counterclockwise) about the axis of the rotor, causing changes in angular velocity. As the rotor rotates, it will change its Sector (or block), and the commutation logic will shift and adjust to it so that we can get the most torque. Over time, the greater angular velocity will generate a higher back EMF (due to a high rate change in magnetic flux) on the connected inductors. This will reduce the effective current in each inductor, thus reducing the torque generate. This negative feedback loop, combined with the friction on the rotor (from things like fluid lubrication) will limit the motor's angular speed.
 
 Physics:
 
