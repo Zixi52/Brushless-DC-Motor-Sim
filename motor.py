@@ -29,7 +29,7 @@ dtheta= 1*2*pi
 
 omega = 0 # angular vel
 inertia = 1  # moment of inertia
-damping = 0.005 # friction coefficient
+damping = 0.0005 # friction coefficient
 
 corePermeability = 1
 magnetBField = 0
@@ -42,7 +42,7 @@ phaseBEMF = [0, 0, 0] # Back EMFs induced in each phase
 lastBField= [0, 0, 0]#last stored value of the BField perpendicular to each phase
 
 wire_resistivity = 1.68e-8 # copper resistivity (ohm*m)
-wire_cross_section = 1e-8 # 0.1 mm^2
+wire_cross_section = 1e-8 # 0.01 mm^2
 
 timeStop = False
 # ------------------------------------------------CAMERA SETTINGS------------------------------------------------
@@ -246,8 +246,6 @@ south_disk= shapes.circle(radius= 3.5, np= 22, scale =1, angle1=pi, angle2 = 2*p
 southPole = extrusion( shape=south_disk, path=magnetSweep,color= color.blue , twosided=True)
 magnet = compound([northPole, southPole], axis = vec(1,0,0))
         
-# inertia = 0.5 * magnetMass * ((north_disk.radius * SCALE) ** 2)#resetting intial variable value
-        
 # Magnetic field arrow from magnet
 B_arrow = arrow(pos=vector(0, 3.5, 0), axis=vector(0, 2, 0),
                 shaftwidth=0.2, color=color.cyan, opacity=0)
@@ -344,19 +342,11 @@ def calculateBackEMFS():
     
 def applyPhaseCurrents(phase_arr): #phase arr shows which phase is on; binary
     global phases, phaseBEMF,phases
-    netBemf=0;
+    netBemf=0
     for i in range(3):
         netBemf += phase_arr[i]*phaseBEMF[i]
         
     seriesCurrent = (batteryV-netBemf)/(2*phaseRs[0]) 
-    print(netBemf)
-    # for i in range(3):
-    #     if phase_arr[i] == 1:
-    #         hi = i
-    #     elif phase_arr[i] == -1:
-    #         lo = i
-    # E = phaseBEMF[hi] - phaseBEMF[lo]
-    # R = phaseRs[hi] + phaseRs[lo]
     
     for i in range(3):
         phases[i] = phase_arr[i] * seriesCurrent
@@ -366,30 +356,6 @@ def applyPhaseCurrents(phase_arr): #phase arr shows which phase is on; binary
             winding[i].color=color.green
         else:
             winding[i].color=color.orange
-
-
-    
-    # for i in range(3):
-    #     if phase_arr[i] == 0:
-    #         phases[i] = 0
-    #         winding[i].color=color.orange
-    #     else:
-    #         # fixed formula to add bemfs
-    #         # per-phase back EMF
-    #         Ei = phaseBEMF[i]
-
-    #         # KVL per phase: V = IR + E
-    #         Ii = (batteryV - Ei) / phaseRs[i]
-
-    #         # apply direction from commutation
-    #         phases[i] = phase_arr[i] * Ii
-
-    #         #bfield increasing towards the center = +
-    #         # phases[i] = phase_arr[i] * (batteryV) / phaseRs[i]
-    #         if phase_arr[i] == -1:
-    #             winding[i].color=color.red
-    #         else:
-    #             winding[i].color=color.green
 
 # one represents north pole, including error margin to not glitch everything out
 def getHallSensors():
@@ -450,6 +416,7 @@ while(1):
     rate(.5/dt)
     updatePhaseResistance()
     updateInertia()
+    calculateBackEMFS()
     getNewStep()
     torque = calculateTorque()
     # alpha = (torque ) / inertia
@@ -457,8 +424,6 @@ while(1):
     omega += alpha * dt
     theta += omega * dt
     rotatekTheta(omega * dt)
-    
-    calculateBackEMFS()
     t_curve.plot(theta, torque)
     v_curve.plot(t, omega)
     a_curve.plot(t, alpha)
